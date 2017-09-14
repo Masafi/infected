@@ -1,6 +1,0 @@
-[submodule "phaser-ce"]
-	path = phaser-ce
-	url = ./phaser-ce
-[submodule "pixi"]
-	path = pixi
-	url = https://github.com/pixijs/pixi.js.git
