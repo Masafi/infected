@@ -1,0 +1,3 @@
+[submodule "phaser-ce"]
+	path = phaser-ce
+	url = ./phaser-ce
