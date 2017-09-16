@@ -3,6 +3,8 @@ const backgroundImage = 'assets/background.png';
 const keycodes = [87, 65, 83, 68];
 const gScale = 0.7;
 
+var isGameActive = false;
+
 PIXI.loader
 	.add(playerImage)
 	.add(backgroundImage)
@@ -12,6 +14,9 @@ class Player {
 	constructor() {
 		this.sprite = new PIXI.Sprite(Resources[playerImage].texture);
 		this.sprite.position.set(100, 200);
+		this.id = 0;
+		this.name = "";
+		this.text = new PIXI.Text(name, {fontFamily: "Arial", fontSize: 32, fill: "Black"});
 	}
 }
 
@@ -20,18 +25,18 @@ var stage;
 var objects;
 var Resources;
 var player;
+var users = new Map();
 var backgroundSprite;
+
 var wKey = keyboard(keycodes[0]);
 var aKey = keyboard(keycodes[1]);
 var sKey = keyboard(keycodes[2]);
 var dKey = keyboard(keycodes[3]);
 
 function setup() {
-	renderer = PIXI.autoDetectRenderer(500, 500);
-	renderer.view.style.position = "absolute";
-	renderer.view.style.display = "block";
+	gameCanvas = document.getElementById('game');
+	renderer = PIXI.autoDetectRenderer(500, 500, {view: gameCanvas, resolution: 1});
 	renderer.autoResize = true;
-	document.body.appendChild(renderer.view);
 	Resources = PIXI.loader.resources;
 
 	player = new Player();
@@ -42,9 +47,13 @@ function setup() {
 	objects.addChild(player.sprite);
 	objects.scale.set(gScale, gScale);
 	stage.addChild(backgroundSprite);
-	stage.addChild(objects);
 
 	frame();
+}
+
+function activateGame() {
+	isGameActive = 1;
+	stage.addChild(objects);
 }
 
 class PhysicPrimitive {
@@ -69,21 +78,44 @@ class PhysicPrimitive {
 
 function frame() {
 	requestAnimationFrame(frame);
-	/*if(wKey.isDown) {
-		socket.emit("move", myid, 0, -1);
+	if(isGameActive) {
+		if(wKey.isDown) {
+			let coords = [0, -1];
+			movePlayer(player, coords);
+		}
+		if(aKey.isDown) {
+			let coords = [-1, 0];
+			movePlayer(player, coords);
+		}
+		if(sKey.isDown) {
+			let coords = [0, 1];
+			movePlayer(player, coords);
+		}
+		if(dKey.isDown) {
+			let coords = [1, 0];
+			movePlayer(player, coords);
+		}
+		socket.emit("coords", getPlayerCoords(player));
 	}
-	if(aKey.isDown) {
-		socket.emit("move", myid, -1, 0);
-	}
-	if(sKey.isDown) {
-		socket.emit("move", myid, 0,  1);
-	}
-	if(dKey.isDown) {
-		socket.emit("move", myid, 1,  0);
-	}*/
 	backgroundSprite.scale.set(Math.max(window.innerWidth / 1920, window.innerHeight / 1080), Math.max(window.innerWidth / 1920, window.innerHeight / 1080));
 	renderer.resize(window.innerWidth, window.innerHeight);
 	renderer.render(stage);
+}
+
+function movePlayer(pl, coord) {
+	pl.sprite.position.x += 5 * coord[0];
+	pl.sprite.position.y += 5 * coord[1];
+}
+
+function setPlayerCoords(pl, coord) {
+	pl.sprite.position.x = coord[0];
+	pl.sprite.position.y = coord[1];
+	pl.text.position.x = coord[0];
+	pl.text.position.y = coord[1] - 50;
+}
+
+function getPlayerCoords(pl) {
+	return [pl.sprite.position.x, pl.sprite.position.y];
 }
 
 function keyboard(keyCode) {
@@ -100,7 +132,6 @@ function keyboard(keyCode) {
 			key.isDown = true;
 			key.isUp = false;
 		}
-		event.preventDefault();
 	};
 
 	//The `upHandler`
@@ -110,15 +141,10 @@ function keyboard(keyCode) {
 			key.isDown = false;
 			key.isUp = true;
 		}
-		event.preventDefault();
 	};
 
 	//Attach event listeners
-	window.addEventListener(
-		"keydown", key.downHandler.bind(key), false
-	);
-	window.addEventListener(
-		"keyup", key.upHandler.bind(key), false
-	);
+	window.addEventListener("keydown", key.downHandler.bind(key), false);
+	window.addEventListener("keyup", key.upHandler.bind(key), false);
 	return key;
 }
