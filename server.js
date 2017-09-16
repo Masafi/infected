@@ -8,7 +8,7 @@ var io = require('socket.io')(server, {
 
 var port = 80;
 server.listen(port);
-app.use(express.static(__dirname + '/../client'));
+app.use(express.static(__dirname + '/client'));
 
 var users = new Map();
 var usersID = new Map();
