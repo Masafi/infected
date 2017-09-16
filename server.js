@@ -6,7 +6,7 @@ var io = require('socket.io')(server, {
 	pingTimeout: 5000
 });
 
-var port = 80;
+var port = 8080;
 server.listen(port);
 app.use(express.static(__dirname + '/client'));
 
