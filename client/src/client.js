@@ -1,4 +1,4 @@
-var port = 8080;
+var port = process.env.PORT || 8080;
 var socket = io.connect(window.location.href.slice(0, -1) + ':' + port);
 var persKey = undefined;
 var myNick = undefined;
