@@ -1,5 +1,5 @@
 var port = 80;
-var socket = io.connect('http://192.168.43.123:' + port);
+var socket = io.connect(window.location.href.slice(0, -1) + ':' + port);
 var persKey = undefined;
 var myNick = undefined;
 var myId = undefined;

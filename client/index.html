@@ -13,9 +13,9 @@
 		<script type="text/javascript" src="src/game.js"></script>
 		<canvas id="game" width="500" height="500"></canvas>
 		<div id="nicknameForm">
-			<input type="text" name="nickname" hint="Nickname" size="20">
+			<input type="text" name="nickname" hint="Nickname" size="20" onkeydown="if (event.keyCode == 13) play()">
 			<br>
-			<button type="button" name="playBtn" onclick="play()" id="playBtn">Play!</button>
+			<button type="button" name="playBtn" id="playBtn" onclick="play()">Play!</button>
 			<div id="errorText">
 
 			</div>
