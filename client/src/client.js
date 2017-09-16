@@ -1,5 +1,5 @@
 var port = 8080;
-var socket = io.connect(window.location.href);
+var socket = io.connect(window.location.href.replace("https://", "http://"));
 var persKey = undefined;
 var myNick = undefined;
 var myId = undefined;
