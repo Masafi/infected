@@ -24,7 +24,6 @@ var renderer;
 var stage;
 var objects;
 var Resources;
-var player;
 var users = new Map();
 var backgroundSprite;
 
@@ -39,12 +38,10 @@ function setup() {
 	renderer.autoResize = true;
 	Resources = PIXI.loader.resources;
 
-	player = new Player();
+	stage = new PIXI.Container();
 	backgroundSprite = new PIXI.Sprite(Resources[backgroundImage].texture);
 
-	stage = new PIXI.Container();
 	objects = new PIXI.Container();
-	objects.addChild(player.sprite);
 	objects.scale.set(gScale, gScale);
 	stage.addChild(backgroundSprite);
 
@@ -56,66 +53,30 @@ function activateGame() {
 	stage.addChild(objects);
 }
 
-class PhysicPrimitive {
-	constructor() {
-		this.x = 0;
-		this.y = 0;
-		this.w = 0;
-		this.h = 0;
-		this.vx = 0;
-		this.vy = 0;
-		this.ax = 0;
-		this.ay = 0;
-		this.mxvx = 0;
-		this.mxvy = 0;
-		this.g = 10;
-	}
-
-	collision(prim) {
-		
-	}
-}
-
 function frame() {
 	requestAnimationFrame(frame);
 	if(isGameActive) {
 		if(wKey.isDown) {
-			let coords = [0, -1];
-			movePlayer(player, coords);
+			socket.emit("keyboard", 0);
 		}
 		if(aKey.isDown) {
-			let coords = [-1, 0];
-			movePlayer(player, coords);
+			socket.emit("keyboard", 1);
 		}
 		if(sKey.isDown) {
-			let coords = [0, 1];
-			movePlayer(player, coords);
+			socket.emit("keyboard", 2);
 		}
 		if(dKey.isDown) {
-			let coords = [1, 0];
-			movePlayer(player, coords);
+			socket.emit("keyboard", 3);
 		}
-		socket.emit("coords", getPlayerCoords(player));
 	}
 	backgroundSprite.scale.set(Math.max(window.innerWidth / 1920, window.innerHeight / 1080), Math.max(window.innerWidth / 1920, window.innerHeight / 1080));
 	renderer.resize(window.innerWidth, window.innerHeight);
 	renderer.render(stage);
 }
 
-function movePlayer(pl, coord) {
-	pl.sprite.position.x += 5 * coord[0];
-	pl.sprite.position.y += 5 * coord[1];
-}
-
 function setPlayerCoords(pl, coord) {
 	pl.sprite.position.x = coord[0];
 	pl.sprite.position.y = coord[1];
-	pl.text.position.x = coord[0];
-	pl.text.position.y = coord[1] - 50;
-}
-
-function getPlayerCoords(pl) {
-	return [pl.sprite.position.x, pl.sprite.position.y];
 }
 
 function keyboard(keyCode) {

@@ -12,7 +12,7 @@
 		"url": "https://github.com/masafi/infected.git"
 	},
 	"scripts": {
-		"start": "node server.js"
+		"start": "node ./server/server.js"
 	},
 	"author": "Masai"
 }

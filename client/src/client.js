@@ -1,4 +1,3 @@
-var port = 8080;
 var socket = io.connect(window.location.href, {secure: true});
 var persKey = undefined;
 var myNick = undefined;
@@ -24,18 +23,15 @@ socket.on('new-player', function (name, online, id) {
 });
 
 socket.on('position', function (usr) {
-	if(usr[1] != myId) {
-		if(!users.has(usr[1])) {
-			console.log(usr[0] + " isn't exists");
-			let pl = new Player();
-			pl.name = usr[0];
-			pl.text.text = usr[0];
-			users.set(usr[1], pl);
-			objects.addChild(pl.sprite);
-			objects.addChild(pl.text);
-		}
-		setPlayerCoords(users.get(usr[1]), usr[2]);
+	if(!users.has(usr[1])) {
+		let pl = new Player();
+		pl.name = usr[0];
+		pl.text.text = usr[0];
+		users.set(usr[1], pl);
+		objects.addChild(pl.sprite);
+		objects.addChild(pl.text);
 	}
+	setPlayerCoords(users.get(usr[1]), usr[2]);
 });
 
 socket.on('usr-disc', function (id) {
