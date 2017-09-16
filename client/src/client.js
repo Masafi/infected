@@ -1,5 +1,5 @@
-var port = process.env.PORT || 8080;
-var socket = io.connect(window.location.href.slice(0, -1) + ':' + port);
+var port = 8080;
+var socket = io.connect("http://172.22.23.8/");
 var persKey = undefined;
 var myNick = undefined;
 var myId = undefined;
