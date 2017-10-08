@@ -1,9 +1,7 @@
 const playerImage = 'assets/p1_stand.png';
 const backgroundImage = 'assets/background.png';
-const keycodes = [87, 65, 83, 68];
+const keycodes = [[87, 'w'], [65, 'a'], [83, 's'], [68, 'd']];
 const gScale = 0.7;
-
-var isGameActive = false;
 
 PIXI.loader
 	.add(playerImage)
@@ -17,6 +15,7 @@ class Player {
 		this.id = 0;
 		this.name = "";
 		this.text = new PIXI.Text(name, {fontFamily: "Arial", fontSize: 32, fill: "Black"});
+		this.updated = false;
 	}
 }
 
@@ -27,10 +26,16 @@ var Resources;
 var users = new Map();
 var backgroundSprite;
 
-var wKey = keyboard(keycodes[0]);
-var aKey = keyboard(keycodes[1]);
-var sKey = keyboard(keycodes[2]);
-var dKey = keyboard(keycodes[3]);
+var isGameActive = false;
+
+var wKey = keyboard(keycodes[0][0], keycodes[0][1]);
+var aKey = keyboard(keycodes[1][0], keycodes[1][1]);
+var sKey = keyboard(keycodes[2][0], keycodes[2][1]);
+var dKey = keyboard(keycodes[3][0], keycodes[3][1]);
+
+var collcol = 0xFF0000;
+
+var paint = new PIXI.Graphics();
 
 function setup() {
 	gameCanvas = document.getElementById('game');
@@ -44,31 +49,21 @@ function setup() {
 	objects = new PIXI.Container();
 	objects.scale.set(gScale, gScale);
 	stage.addChild(backgroundSprite);
+	stage.addChild(paint);
 
 	frame();
 }
 
-function activateGame() {
-	isGameActive = 1;
-	stage.addChild(objects);
-}
+var platforms = [];
 
 function frame() {
 	requestAnimationFrame(frame);
-	if(isGameActive) {
-		if(wKey.isDown) {
-			socket.emit("keyboard", 0);
-		}
-		if(aKey.isDown) {
-			socket.emit("keyboard", 1);
-		}
-		if(sKey.isDown) {
-			socket.emit("keyboard", 2);
-		}
-		if(dKey.isDown) {
-			socket.emit("keyboard", 3);
-		}
-	}
+	paint.clear();
+	paint.beginFill(collcol);
+	platforms.forEach(function(item, i, arr) {
+		paint.drawRect(item[0].x * 0.7, item[0].y * 0.7, item[1].x * 0.7, item[1].y * 0.7);
+	});
+	paint.endFill();
 	backgroundSprite.scale.set(Math.max(window.innerWidth / 1920, window.innerHeight / 1080), Math.max(window.innerWidth / 1920, window.innerHeight / 1080));
 	renderer.resize(window.innerWidth, window.innerHeight);
 	renderer.render(stage);
@@ -77,19 +72,25 @@ function frame() {
 function setPlayerCoords(pl, coord) {
 	pl.sprite.position.x = coord[0];
 	pl.sprite.position.y = coord[1];
+	pl.text.position.x = coord[0];
+	pl.text.position.y = coord[1] - 50;
 }
 
-function keyboard(keyCode) {
+function keyboard(keyCode, ch) {
 	var key = {};
 	key.code = keyCode;
 	key.isDown = false;
 	key.isUp = true;
 	key.press = undefined;
 	key.release = undefined;
+	key.char = ch;
 	//The `downHandler`
 	key.downHandler = function(event) {
 		if (event.keyCode === key.code) {
-			if (key.isUp && key.press) key.press();
+			if (key.isUp) {
+				if(key.press) key.press();
+				socket.emit("keyboard", ch, true, token);
+			}
 			key.isDown = true;
 			key.isUp = false;
 		}
@@ -98,7 +99,10 @@ function keyboard(keyCode) {
 	//The `upHandler`
 	key.upHandler = function(event) {
 		if (event.keyCode === key.code) {
-			if (key.isDown && key.release) key.release();
+			if (key.isDown) {
+				if(key.release) key.release();
+				socket.emit("keyboard", ch, false, token);
+			}
 			key.isDown = false;
 			key.isUp = true;
 		}

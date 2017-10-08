@@ -3,7 +3,9 @@
 	"version": "0.1.0",
 	"dependencies": {
 		"socket.io": "2.0.3",
-		"express": "4.15.4"
+		"express": "4.15.4",
+		"jsonwebtoken": "8.0.1",
+		"taffydb": "2.7.3"
 	},
 	"description": "Infected.io game server",
 	"main": "server.js",

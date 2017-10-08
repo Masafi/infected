@@ -1,48 +1,64 @@
 var socket = io.connect(window.location.href, {secure: true});
-var persKey = undefined;
+var token = undefined;
 var myNick = undefined;
 var myId = undefined;
 
-socket.on('reg-error', function () {
+socket.on('reg-error', function (errText) {
 	let errDiv = document.getElementById('errorText');
-	errDiv.innerHTML = "Username empty!";
+	errDiv.innerHTML = errText;
+	let nickDiv = document.getElementById('nicknameForm');
+	nickDiv.style.display = 'inline';
 });
 
-socket.on('reg-success', function (key, name, id) {
-	persKey = key;
+socket.on('reg-success', function (key, id, name) {
+	token = key;
 	let nickDiv = document.getElementById('nicknameForm');
 	nickDiv.style.display = 'none';
-	console.log("You successfully joined the game, your nickname is: " + name);
 	myNick = name;
 	myId = id;
 	activateGame();
 });
 
-socket.on('new-player', function (name, online, id) {
-	console.log(name + " joined the game. Total online: " + online);
-});
-
-socket.on('position', function (usr) {
-	if(!users.has(usr[1])) {
-		let pl = new Player();
-		pl.name = usr[0];
-		pl.text.text = usr[0];
-		users.set(usr[1], pl);
-		objects.addChild(pl.sprite);
-		objects.addChild(pl.text);
+socket.on('update', function (data) {
+	/*if(data[0] == 0) {
+		for(let item of users) {
+			item.updated = false;
+		}
+		data.forEach(function (item, i, arr) {
+			if(item == 0) return;
+			if(!users.has(item.id)) {
+				let pl = new Player();
+				pl.name = item.name;
+				pl.text.text = item.name;
+				users.set(item.id, pl);
+				objects.addChild(pl.sprite);
+				objects.addChild(pl.text);
+			}
+			users.get(item.id).updated = true;
+			setPlayerCoords(users.get(item.id), item.coords);
+		});
+		for(let item of users) {
+			if(!item.updated) {
+				objects.removeChild(item.sprite);
+				objects.removeChild(item.text);
+				users.delete(item.id);
+			}
+		}
 	}
-	setPlayerCoords(users.get(usr[1]), usr[2]);
+	else {
+		data.forEach(function(item, i, arr) {
+			if(item == 1) return;
+			platforms.push(item);
+		});
+	}*/
 });
-
-socket.on('usr-disc', function (id) {
-	if(users.has(id)) {
-		objects.removeChild(users.get(id).sprite);
-		objects.removeChild(users.get(id).text);
-	}
-	users.delete(id);
-})
 
 function play() {
 	var nicknameInput = document.getElementsByName('nickname')[0].value;
 	socket.emit('registration', nicknameInput);
+}
+
+function activateGame() {
+	isGameActive = 1;
+	stage.addChild(objects);
 }
