@@ -1,16 +1,14 @@
 var socket = io.connect(window.location.href, {secure: true});
 var token = undefined;
-var myNick = undefined;
-var myId = undefined;
 
-socket.on('reg-error', function (errText) {
+socket.on('reg-error', function(errText) {
 	let errDiv = document.getElementById('errorText');
 	errDiv.innerHTML = errText;
 	let nickDiv = document.getElementById('nicknameForm');
 	nickDiv.style.display = 'inline';
 });
 
-socket.on('reg-success', function (key, id, name) {
+socket.on('reg-success', function(key, id, name) {
 	token = key;
 	let nickDiv = document.getElementById('nicknameForm');
 	nickDiv.style.display = 'none';
@@ -20,37 +18,15 @@ socket.on('reg-success', function (key, id, name) {
 });
 
 socket.on('update', function (data) {
-	/*if(data[0] == 0) {
-		for(let item of users) {
-			item.updated = false;
-		}
-		data.forEach(function (item, i, arr) {
-			if(item == 0) return;
-			if(!users.has(item.id)) {
-				let pl = new Player();
-				pl.name = item.name;
-				pl.text.text = item.name;
-				users.set(item.id, pl);
-				objects.addChild(pl.sprite);
-				objects.addChild(pl.text);
-			}
-			users.get(item.id).updated = true;
-			setPlayerCoords(users.get(item.id), item.coords);
-		});
-		for(let item of users) {
-			if(!item.updated) {
-				objects.removeChild(item.sprite);
-				objects.removeChild(item.text);
-				users.delete(item.id);
-			}
-		}
+	gameData = data;
+});
+
+socket.on('reg-disconnect', function(id) {
+	if(players.has(id)) {
+		players.get(id).graphics.unstageFromScene(objects);
+		players.get(id).nameSprite.unstageFromScene(objects);
+		players.delete(id);
 	}
-	else {
-		data.forEach(function(item, i, arr) {
-			if(item == 1) return;
-			platforms.push(item);
-		});
-	}*/
 });
 
 function play() {

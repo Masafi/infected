@@ -70,14 +70,7 @@ io.on('connection', function(socket) {
 			players[nid] = pl;
 			var tok = pl.network.makeToken();
 			usersNetwork.insert({'id': nid, 'socket': socket.id.toString(), 'token': tok});
-			socket.emit('reg-success', tok, nid, name)
-
-			var data = [];
-			data.push(1);
-			platforms.forEach(function(item, i, arr) {
-				data.push([item.pos, item.size]);
-			});
-			socket.emit('update', data);
+			socket.emit('reg-success', tok, nid, name);
 			console.log(name +  "joined the game. Total: " + usersNetwork().count());
 		}
 	});
@@ -95,6 +88,8 @@ io.on('connection', function(socket) {
 			var name = players[usr.id].network.name;
 			var id = usr.id;
 			ids[id] = false;
+			players[id] = undefined;
+			io.to('users').emit('reg-disconnect', id);
 			usersNetwork({'socket': socket.id.toString()}).remove();
 			console.log(name + " left the game. Total: " + usersNetwork().count());
 		}
@@ -133,24 +128,7 @@ function reqId() {
 
 //Game logic
 var platforms = [];
-
-class NetworkPrimitive {
-	constructor() {
-		this.nickname = "";
-		this.id = -1;
-		this.socket = undefined;
-		this.token = undefined;
-	}
-
-	makeToken() {
-		var profile = {};
-		profile.nick = this.nickname;
-		profile.sid = this.socket;
-		profile.id = this.id;
-		this.token = jwt.sign(profile, jwtSecretKey, { expiresIn: "24h" });
-		return this.token;
-	}
-}
+const eps = 1e-6;
 
 class Vector2 {
 	constructor(x, y) {
@@ -195,6 +173,24 @@ class Vector2 {
 	}
 }
 
+class NetworkPrimitive {
+	constructor() {
+		this.nickname = "";
+		this.id = -1;
+		this.socket = undefined;
+		this.token = undefined;
+	}
+
+	makeToken() {
+		var profile = {};
+		profile.nick = this.nickname;
+		profile.sid = this.socket;
+		profile.id = this.id;
+		this.token = jwt.sign(profile, jwtSecretKey, { expiresIn: "24h" });
+		return this.token;
+	}
+}
+
 class PhysicPrimitive {
 	constructor() {
 		this.pos = new Vector2(0, 0);
@@ -203,7 +199,7 @@ class PhysicPrimitive {
 		this.acc = new Vector2(0, 0);
 		this.mxvel = new Vector2(0, 0);
 		this.standing = false;
-		this.g = 1000;
+		this.g = 2000;
 	}
 
 	updateSpeed(dt) {
@@ -216,10 +212,10 @@ class PhysicPrimitive {
 
 	collision(that, dt) {
 		var relv = this.vel.sub(that.vel);
-		/*var bigBox = new PhysicPrimitive();
+		var bigBox = new PhysicPrimitive();
 		bigBox.pos = this.pos.min(this.updatePosition(relv, dt));
 		bigBox.size = this.pos.max(this.updatePosition(relv, dt)).add(this.size).sub(bigBox.pos);
-		if (bigBox.intersects(that)) {*/
+		if (bigBox.intersects(that)) {
 			var invEntry = new Vector2(0, 0);
 			var invExit = new Vector2(0, 0);
 			if (relv.x >= 0) {
@@ -239,15 +235,15 @@ class PhysicPrimitive {
 			var entry = new Vector2(0, 0);
 			var exit = new Vector2(0, 0);
 			if (relv.x == 0) {
-				entry.x = Math.sign(invEntry.x) * (dt + 1);
-				exit.x = Math.sign(invExit.x) * (dt + 1);
+				entry.x = (invEntry.x > 0 ? 1 : -1) * (dt + 1);
+				exit.x = (invExit.x > 0 ? 1 : -1) * (dt + 1);
 			} else {
 				entry.x = invEntry.x / relv.x;
 				exit.x = invExit.x / relv.x;
 			}
 			if (relv.y == 0) {
-				entry.y = Math.sign(invEntry.y) * (dt + 1);
-				exit.y = Math.sign(invExit.y) * (dt + 1);
+				entry.y = (invEntry.y > 0 ? 1 : -1) * (dt + 1);
+				exit.y = (invExit.y > 0 ? 1 : -1) * (dt + 1);
 			} else {
 				entry.y = invEntry.y / relv.y;
 				exit.y = invExit.y / relv.y;
@@ -255,32 +251,42 @@ class PhysicPrimitive {
 			var entryTime = Math.max(entry.x, entry.y);
 			var exitTime = Math.min(exit.x, exit.y);
 			var normal = new Vector2(0, 0);
-			if (entryTime > exitTime || entry.x < 0 && entry.y < 0 || entry.x > dt || entry.y > dt) {
+			if (entryTime > exitTime || entry.x < -eps && entry.y < -eps || entry.x - dt > eps || entry.y - dt > eps) {
 				return [dt + 1, normal];
 			} else {
 				if (entry.x > entry.y) {
-					if (invEntry.x < 0) {
-						normal = new Vector2(1, 0);
-					} else {
+					if (relv.x >= 0) {
 						normal = new Vector2(-1, 0);
+					} else {
+						normal = new Vector2(1, 0);
 					}
 				} else {
-					if (invEntry.y < 0) {
-						normal = new Vector2(0, 1);
-					} else {
-						this.standing = true;
+					if (relv.y >= 0) {
 						normal = new Vector2(0, -1);
+					} else {
+						normal = new Vector2(0, 1);
 					}
 				}
 				return [entryTime, normal];
 			}
-		/*}
+		}
 		else {
 			return [dt + 1, new Vector2(0, 0)];
-		}*/
+		}
 	}
 
 	intersects(that) {
+		return  (this.pos.x > that.pos.x && this.pos.x < that.pos.x + that.size.x ||
+				this.pos.x + this.size.x > that.pos.x && this.pos.x + this.size.x < that.pos.x + that.size.x) &&
+				(this.pos.y > that.pos.y && this.pos.y < that.pos.y + that.size.y ||
+				this.pos.y + this.size.y > that.pos.y && this.pos.y + this.size.y < that.pos.y + that.size.y) ||
+				(that.pos.x > this.pos.x && that.pos.x < this.pos.x + this.size.x ||
+				that.pos.x + that.size.x > this.pos.x && that.pos.x + that.size.x < this.pos.x + this.size.x) &&
+				(that.pos.y > this.pos.y && that.pos.y < this.pos.y + this.size.y ||
+				that.pos.y + that.size.y > this.pos.y && that.pos.y + that.size.y < this.pos.y + this.size.y);
+	}
+
+	intersectsWithBorders(that) {
 		return  (this.pos.x >= that.pos.x && this.pos.x <= that.pos.x + that.size.x ||
 				this.pos.x + this.size.x >= that.pos.x && this.pos.x + this.size.x <= that.pos.x + that.size.x) &&
 				(this.pos.y >= that.pos.y && this.pos.y <= that.pos.y + that.size.y ||
@@ -289,6 +295,82 @@ class PhysicPrimitive {
 				that.pos.x + that.size.x >= this.pos.x && that.pos.x + that.size.x <= this.pos.x + this.size.x) &&
 				(that.pos.y >= this.pos.y && that.pos.y <= this.pos.y + this.size.y ||
 				that.pos.y + that.size.y >= this.pos.y && that.pos.y + that.size.y <= this.pos.y + this.size.y);
+	}
+
+	resolveIntersection(that) {
+		if(this.intersects(that)) {
+			var leastProj = new Vector2(this.pos.x + this.size.x - that.pos.x, this.pos.y + this.size.y - that.pos.y);
+			var greatProj = new Vector2(that.pos.x + that.size.x - this.pos.x, that.pos.y + that.size.y - this.pos.y);
+			var mxVal = Math.max(Math.max(Math.max(leastProj.x, leastProj.y), greatProj.x), greatProj.y);
+			console.log([leastProj, greatProj]);
+			console.log(this.collision(that, 1));
+			if(leastProj.x < 0) leastProj.x = mxVal + 1;
+			if(leastProj.y < 0) leastProj.y = mxVal + 1;
+			if(greatProj.x < 0) greatProj.x = mxVal + 1;
+			if(greatProj.y < 0) greatProj.y = mxVal + 1;
+			var mnVal = Math.min(Math.min(Math.min(leastProj.x, leastProj.y), greatProj.x), greatProj.y);
+			if(mnVal == mxVal + 1) {
+				return;
+			}
+			if(leastProj.x == mnVal) {
+				this.pos.x -= leastProj.x;
+			}
+			else if(leastProj.y == mnVal) {
+				this.pos.y -= leastProj.y;
+			}
+			else if(greatProj.x == mnVal) {
+				this.pos.x += greatProj.x;
+			}
+			else if(greatProj.y == mnVal){
+				this.pos.y += greatProj.y;
+			}
+		}
+	}
+
+	resolveCollision(objects, dt) {
+		var collisionDataEnd = [new Vector2(dt + 1, dt + 1), new Vector2(0, 0)];
+		var self = this;
+		
+		objects.forEach(function(platform, i, arr) {
+			self.resolveIntersection(platform);
+			var collisionData = self.collision(platform, dt);
+			if(collisionData[0] <= collisionDataEnd[0].x && collisionData[1].x != 0) {
+				collisionDataEnd[0].x = collisionData[0];
+				collisionDataEnd[1].x = collisionData[1].x;
+			}
+			if(collisionData[0] <= collisionDataEnd[0].y && collisionData[1].y != 0) {
+				collisionDataEnd[0].y = collisionData[0];
+				collisionDataEnd[1].y = collisionData[1].y;
+			}
+		});
+
+		if(collisionDataEnd[0].x <= collisionDataEnd[0].y && collisionDataEnd[0].x <= dt) {
+			self.pos = self.updatePosition(self.vel, collisionDataEnd[0].x);
+			self.vel.x = 0;
+			if(collisionDataEnd[0].y <= dt) {
+				self.standing = collisionDataEnd[1].y == -1;
+				self.pos = self.updatePosition(self.vel, collisionDataEnd[0].y - collisionDataEnd[0].x);
+				self.vel.y = 0;
+			}
+			else {
+				self.pos = self.updatePosition(self.vel, dt - collisionDataEnd[0].x);	
+			}
+		}
+		else if(collisionDataEnd[0].x > collisionDataEnd[0].y && collisionDataEnd[0].y <= dt) {
+			self.standing = collisionDataEnd[1].y == -1;
+			self.pos = self.updatePosition(self.vel, collisionDataEnd[0].y);
+			self.vel.y = 0;
+			if(collisionDataEnd[0].x <= dt) {
+				self.pos = self.updatePosition(self.vel, collisionDataEnd[0].x - collisionDataEnd[0].y);
+				self.vel.x = 0;
+			}
+			else {
+				self.pos = self.updatePosition(self.vel, dt - collisionDataEnd[0].y);	
+			}
+		}
+		else if(collisionDataEnd[0].x > dt && collisionDataEnd[0].y > dt) {
+			self.pos = self.updatePosition(self.vel, dt);	
+		}
 	}
 }
 
@@ -299,8 +381,8 @@ class Player {
 
 		this.physics = new PhysicPrimitive();
 		this.physics.pos = new Vector2(200, 200);
-		this.physics.size = new Vector2(66, 92);
-		this.physics.mxvel = new Vector2(400, 1000);
+		this.physics.size = new Vector2(32, 42);
+		this.physics.mxvel = new Vector2(400, 4000);
 		this.physics.acc = new Vector2(0, this.physics.g);
 
 		this.network = new NetworkPrimitive();
@@ -310,19 +392,24 @@ class Player {
 	}
 
 	processKeys() {
-		if(this.keys['a']) {
+		if (this.keys['a']) {
 			this.physics.vel.x = -400;
 		}
-		else if(this.keys['d']) {
+		else if (this.keys['d']) {
 			this.physics.vel.x = 400;
 		}
 		else {
 			this.physics.vel.x = 0;
 		}
-		if(this.keys['w'] && this.physics.standing == 1) {
-			this.physics.vel.y = -1000;
+
+		if (this.keys['w'] && this.physics.standing) {
+			this.physics.vel.y = -1200;
 		}
 	}
+}
+
+class Block {
+	
 }
 
 function setup() {
@@ -330,24 +417,24 @@ function setup() {
 	plat.pos = new Vector2(-100, 700);
 	plat.size = new Vector2(2000, 100);
 	platforms.push(plat);
-	var plat = new PhysicPrimitive();
+	plat = new PhysicPrimitive();
 	plat.pos = new Vector2(-100, -100);
 	plat.size = new Vector2(2000, 100);
 	platforms.push(plat);
-	var plat = new PhysicPrimitive();
+	plat = new PhysicPrimitive();
 	plat.pos = new Vector2(-100, -100);
 	plat.size = new Vector2(100, 2000);
 	platforms.push(plat);
-	var plat = new PhysicPrimitive();
+	plat = new PhysicPrimitive();
 	plat.pos = new Vector2(1200, -100);
 	plat.size = new Vector2(100, 2000);
 	platforms.push(plat);
 
-	var plat = new PhysicPrimitive();
+	plat = new PhysicPrimitive();
 	plat.pos = new Vector2(300, 400);
 	plat.size = new Vector2(100, 100);
 	platforms.push(plat);
-	var plat = new PhysicPrimitive();
+	plat = new PhysicPrimitive();
 	plat.pos = new Vector2(600, 300);
 	plat.size = new Vector2(100, 20);
 	platforms.push(plat);
@@ -361,31 +448,21 @@ function tick() {
 	var dt = (curTime - lastTickTime) / 1000;
 	lastTickTime = curTime;
 	var data = [];
-	data.push(0);
-	players.forEach(function (item, i, arr) {
+	players.forEach(function (player, i, arr) {
+		if(player == undefined) return;
+		//Processing physics
+		player.processKeys();
+		player.physics.vel = player.physics.updateSpeed(dt);
+		player.physics.standing = false;
+		
+		//Collision
+		player.physics.resolveCollision(platforms, dt);
+
+		//Data for transfer
 		var iData = {};
-		item.processKeys();
-		item.physics.vel = item.physics.updateSpeed(dt);
-		item.physics.standing = false;
-		var colDataFin = [dt + 1, new Vector2(0, 0)];
-		platforms.forEach(function(pl, i, arr) {
-			var colData = item.physics.collision(pl, dt);
-			if(colData[0] >= 0 && colData[0] <= colDataFin[0]) {
-				colDataFin = colData;
-			}
-		});
-		if(colDataFin[0] >= 0 && colDataFin[0] <= dt) {
-			item.physics.pos = item.physics.updatePosition(item.physics.vel, colDataFin[0]);
-			var dotprod = (item.physics.vel.x * colDataFin[1].y + item.physics.vel.y * colDataFin[1].x);
-			item.physics.vel.x = dotprod * colDataFin[1].y;
-			item.physics.vel.y = dotprod * colDataFin[1].x;
-			item.physics.pos = item.physics.updatePosition(item.physics.vel, dt - colDataFin[0]);
-		}
-		else {
-			item.physics.pos = item.physics.updatePosition(item.physics.vel, dt);
-		}
-		iData.id = item.id;
-		iData.coords = item.physics.pos.toArr();
+		iData.id = player.id;
+		iData.pos = player.physics.pos;
+		iData.name = player.network.nickname;
 		data.push(iData);
 	});
 

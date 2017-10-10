@@ -1,0 +1,28 @@
+{"frames": {
+
+"platform.png":
+{
+	"frame": {"x":0,"y":0,"w":21,"h":10},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":21,"h":10},
+	"sourceSize": {"w":21,"h":10}
+},
+"player.png":
+{
+	"frame": {"x":0,"y":10,"w":32,"h":42},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":32,"h":42},
+	"sourceSize": {"w":32,"h":42}
+}},
+"meta": {
+	"app": "http://www.codeandweb.com/texturepacker",
+	"version": "1.0",
+	"image": "atlas.png",
+	"format": "RGBA8888",
+	"size": {"w":32,"h":52},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:707b12d8c035fb93cb1cde2cfb7c7d14:547a394909781d821c9c8e4f3eccb197:cbce6b53f0f49e0bf15173c25c41f876$"
+}
+}
