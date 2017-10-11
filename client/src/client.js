@@ -17,7 +17,8 @@ socket.on('reg-success', function(key, id, name) {
 	activateGame();
 });
 
-socket.on('update', function (data) {
+socket.on('update', function(data) {
+	dataUpdated = false;
 	gameData = data;
 });
 
@@ -29,6 +30,23 @@ socket.on('reg-disconnect', function(id) {
 	}
 });
 
+socket.on('map', function(nmap) {
+	if(!map) { 
+		map = [];
+		nmap.forEach(function(row, i, maparr) {
+			map.push([]);
+			row.forEach(function(item, j, rowarr) {
+				map[i].push(new Block());
+			});
+		});
+	}
+	nmap.forEach(function(row, i, maparr) {
+		row.forEach(function(item, j, rowarr) {
+			map[i][j].update(item);
+		});
+	});
+});
+
 function play() {
 	var nicknameInput = document.getElementsByName('nickname')[0].value;
 	socket.emit('registration', nicknameInput);
@@ -36,5 +54,6 @@ function play() {
 
 function activateGame() {
 	isGameActive = 1;
-	stage.addChild(objects);
+	screenStage.addChild(gameScene);
+	lastTickTime = new Date().getTime();
 }

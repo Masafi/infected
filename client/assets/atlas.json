@@ -1,16 +1,40 @@
 {"frames": {
 
-"platform.png":
+"block000.png":
 {
-	"frame": {"x":0,"y":0,"w":21,"h":10},
+	"frame": {"x":0,"y":0,"w":32,"h":32},
 	"rotated": false,
 	"trimmed": false,
-	"spriteSourceSize": {"x":0,"y":0,"w":21,"h":10},
-	"sourceSize": {"w":21,"h":10}
+	"spriteSourceSize": {"x":0,"y":0,"w":32,"h":32},
+	"sourceSize": {"w":32,"h":32}
+},
+"block001.png":
+{
+	"frame": {"x":0,"y":32,"w":32,"h":32},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":32,"h":32},
+	"sourceSize": {"w":32,"h":32}
+},
+"block002.png":
+{
+	"frame": {"x":0,"y":64,"w":32,"h":32},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":32,"h":32},
+	"sourceSize": {"w":32,"h":32}
+},
+"block003.png":
+{
+	"frame": {"x":0,"y":96,"w":32,"h":32},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":32,"h":32},
+	"sourceSize": {"w":32,"h":32}
 },
 "player.png":
 {
-	"frame": {"x":0,"y":10,"w":32,"h":42},
+	"frame": {"x":0,"y":128,"w":32,"h":42},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":32,"h":42},
@@ -21,8 +45,8 @@
 	"version": "1.0",
 	"image": "atlas.png",
 	"format": "RGBA8888",
-	"size": {"w":32,"h":52},
+	"size": {"w":32,"h":170},
 	"scale": "1",
-	"smartupdate": "$TexturePacker:SmartUpdate:707b12d8c035fb93cb1cde2cfb7c7d14:547a394909781d821c9c8e4f3eccb197:cbce6b53f0f49e0bf15173c25c41f876$"
+	"smartupdate": "$TexturePacker:SmartUpdate:f3eaacda34a8d05d85972a1ecfb2dd81:006bbbf9000b3e0189f93320311d52a4:cbce6b53f0f49e0bf15173c25c41f876$"
 }
 }
