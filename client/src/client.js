@@ -30,21 +30,8 @@ socket.on('reg-disconnect', function(id) {
 	}
 });
 
-socket.on('map', function(nmap) {
-	if(!map) { 
-		map = [];
-		nmap.forEach(function(row, i, maparr) {
-			map.push([]);
-			row.forEach(function(item, j, rowarr) {
-				map[i].push(new Block());
-			});
-		});
-	}
-	nmap.forEach(function(row, i, maparr) {
-		row.forEach(function(item, j, rowarr) {
-			map[i][j].update(item);
-		});
-	});
+socket.on('map-chunk', function(chunk) {
+	map.updateChunk(chunk);
 });
 
 function play() {

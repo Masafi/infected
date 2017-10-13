@@ -18,6 +18,7 @@ var Resources;
 var backgroundSprite;
 var mapScene;
 var gameScene;
+var chunkScenes = [];
 
 var isGameActive = false;
 var myKeys = {};
@@ -83,11 +84,12 @@ var players = new Map();
 var myNick = undefined;
 var myId = undefined;
 var camera = new Vector2(0, 0);
-var map = undefined;
 var CellSize = new Vector2(32, 32);
 var lastTickTime = new Date().getTime();
 var dataUpdated = false;
 const eps = 1e-6;
+const chunkSize = 8;
+var mapSize = new Vector2(512, 128);
 
 class GraphicsPrimitive {
 	constructor() {
@@ -122,6 +124,7 @@ class PhysicPrimitive {
 		this.acc = new Vector2(0, 0);
 		this.mxvel = new Vector2(0, 0);
 		this._rpos = new Vector2(0, 0);
+		this.rscale = CellSize.mula(1);
 		this.standing = false;
 		this.g = 1000;
 	}
@@ -307,11 +310,11 @@ class PhysicPrimitive {
 
 	set pos(npos) {
 		this._pos = npos;
-		this._rpos = npos.div(CellSize);
+		this._rpos = npos.div(this.rscale);
 	}
 	
 	set rpos(npos) {
-		this._pos = npos.mul(CellSize);
+		this._pos = npos.mul(this.rscale);
 		this._rpos = npos;
 	}
 
@@ -344,9 +347,9 @@ class Player {
 
 	update(data = undefined) {
 		if(data) {
-			if(Math.abs(data.physics._pos.x - this.physics.pos.x) > 0.5 || Math.abs(data.physics._pos.y - this.physics.pos.y) > 0.5) {
-				this.physics.pos.x = data.physics._pos.x;
-				this.physics.pos.y = data.physics._pos.y;
+			if(Math.abs(data.physics._pos.x - this.physics.pos.x) > 0.1 || Math.abs(data.physics._pos.y - this.physics.pos.y) > 0.1) {
+				var npos = new Vector2(data.physics._pos.x, data.physics._pos.y);
+				this.physics.pos = npos;
 			}
 			this.physics.vel.x = data.physics.vel.x;
 			this.physics.vel.y = data.physics.vel.y;
@@ -409,10 +412,11 @@ class Player {
 }
 
 class Block {
-	constructor() {
+	constructor(scene) {
 		this.physics = new PhysicPrimitive();
 		this.physics.size = new Vector2(0, 0).add(CellSize);
 		this._id = 0;
+		this.scene = scene;
 		this.graphics = new GraphicsPrimitive();
 		this.graphics.initSprite(this.getTextureName());
 		this.solid = false;
@@ -425,9 +429,9 @@ class Block {
 
 	update(data = undefined) {
 		if(data) {
-			this.id = data.id;
-			this.physics.pos.x = data.pos.x;
-			this.physics.pos.y = data.pos.y;
+			this.id = data._id;
+			this.physics.pos.x = data.physics._pos.x;
+			this.physics.pos.y = data.physics._pos.y;
 		}
 		this.graphics.pos = this.physics.pos;
 		this.graphics.updatePos(camera);
@@ -440,10 +444,10 @@ class Block {
 			this.graphics.sprite.setTexture(PIXI.Texture.fromFrame(this.getTextureName()));
 			if(nid >= 1 && oldid == 0) {
 				this.solid = true;
-				this.graphics.stageToScene(mapScene);
+				this.graphics.stageToScene(this.scene);
 			}
 			else {
-				this.graphics.unstageFromScene(mapScene);
+				this.graphics.unstageFromScene(this.scene);
 			}
 		}
 	}
@@ -452,6 +456,139 @@ class Block {
 		return this._id;
 	}
 }
+
+class Chunk {
+	constructor(rpos) {
+		this.physics = new PhysicPrimitive();
+		this.physics.rscale = new Vector2(chunkSize, chunkSize);
+		this.physics.rpos = rpos;
+		this.physics.size = new Vector2(chunkSize, chunkSize);
+		this.chunk = [];
+		this.prevUpdate = false;
+		for(let i = 0; i < chunkSize; i++) {
+			this.chunk.push([]);
+			for(let j = 0; j < chunkSize; j++) {
+				this.chunk[i].push(new Block(chunkScenes[rpos.x][rpos.y]));
+				this.chunk[i][j].physics.rpos = new Vector2(i, j).add(this.physics.pos);
+			}
+		}
+	}
+
+	getStaticObj(arr) {
+		this.chunk.forEach(function(row, i, arr) {
+			row.forEach(function(block, j, rarr) {
+				if(block.static) {
+					arr.push(block);
+				}
+			});
+		});
+	}
+
+	update(data) {
+		var self = this;
+		var curUpdate = this.updateRender();
+		if(curUpdate || this.prevUpdate || data) {
+			this.prevUpdate = curUpdate;
+			this.chunk.forEach(function(row, i, arr) {
+				row.forEach(function(item, j, rarr) {
+					if(data) {
+						item.update(data.chunk[i][j]);
+					}
+					else {
+						item.update();
+					}
+				})
+			});
+		}
+	}
+
+	updateRender() {
+		if(players.has(myId)) {
+			var dist = Math.max(Math.min(Math.abs(this.physics.pos.x - players.get(myId).physics.rpos.x), 
+										 Math.abs(this.physics.pos.x + chunkSize - players.get(myId).physics.rpos.x)), 
+								Math.min(Math.abs(this.physics.pos.y - players.get(myId).physics.rpos.y), 
+										 Math.abs(this.physics.pos.y + chunkSize - players.get(myId).physics.rpos.y))); 
+			if(dist <= 16) {
+				chunkScenes[this.physics.rpos.x][this.physics.rpos.y].visible = true;
+				return true;
+			}
+			else {
+				chunkScenes[this.physics.rpos.x][this.physics.rpos.y].visible = false;
+				return false;
+			}
+		}
+	}
+
+	get(i, j) {
+		return this.chunk[i - this.physics.pos.x][j - this.physics.pos.y];
+	}
+	set(i, j, val) {
+		this.chunk[i - this.physics.pos.x][j - this.physics.pos.y] = val;
+	}
+}
+
+class GameMap {
+	constructor() {
+		this.map = [];
+		for(let i = 0; i < mapSize.x / chunkSize; i++) {
+			this.map.push([]);
+			for(let j = 0; j < mapSize.y / chunkSize; j++) {
+				this.map[i].push(new Chunk(new Vector2(i, j)));
+			}
+		}
+	}
+
+	generateMap() {
+		var height = [];
+		for(let i = 0; i < mapSize.x; i++) {
+			height.push(Math.floor(perlinNoise.noise(i / 3, 0.5, 0.5) * maxHeight + 1));
+		}
+		for(let i = 0; i < mapSize.x; i++) {
+			for(let j = 0; j < 13; j++) {
+				if(height[i] >= maxHeight + 1 - j) {
+					this.get(i, j).id = 2;
+					this.get(i, j).id = 3;
+					this.get(i, j).id = 3;
+					this.get(i, j).id = 3;
+					break;
+				}
+			}
+			for(let j = 1; j < mapSize.y; j++) {
+				if(this.get(i, j).id >= 1 && this.get(i, j).id == 0) this.get(i, j).id = 1;
+			}
+		}
+	}
+
+	getChunk(i, j) {
+		return this.map[Math.floor(i / chunkSize)][Math.floor(j / chunkSize)];
+	}
+
+	getChunkID(i, j) {
+		return new Vector2(Math.floor(i / chunkSize), Math.floor(j / chunkSize));
+	}
+
+	get(i, j) {
+		return this.getChunk(i, j).get(i, j);
+	}
+
+	set(i, j, val) {
+		this.getChunk().set(i, j, val);	
+	}
+	
+	updateChunk(chunk) {
+		this.getChunk(chunk.physics._pos.x, chunk.physics._pos.y).update(chunk);
+	}
+
+	update() {
+		this.map.forEach(function(row, i, arr) {
+			row.forEach(function(item, j, rarr) {
+				item.update(undefined);
+			});
+		});
+	}
+}
+
+var map = undefined;
 
 function setup() {
 	gameCanvas = document.getElementById('game');
@@ -469,9 +606,21 @@ function setup() {
 	gameScene.addChild(objects);
 	gameScene.addChild(mapScene);
 	screenStage.addChild(backgroundSprite);
+	for(let i = 0; i < mapSize.x / chunkSize; i++) {
+		chunkScenes.push([]);
+		for(let j = 0; j < mapSize.y / chunkSize; j++) {
+			chunkScenes[i].push(new PIXI.Container());
+			mapScene.addChild(chunkScenes[i][j]);
+		}
+	}
+
+	map = new GameMap();
 	
 	frame();
 }
+
+var fps = 0;
+var fpstime = 0;
 
 function frame() {
 	requestAnimationFrame(frame);
@@ -479,7 +628,14 @@ function frame() {
 		var curTime = new Date().getTime();
 		var dt = (curTime - lastTickTime) / 1000;
 		lastTickTime = curTime;
-		players.get(myId).tickUpdate(dt);
+		fpstime += dt;
+		fps++;
+		if(fpstime >= 1) {
+			console.log(fps);
+			fps = 0;
+			fpstime = 0;
+		}
+		//players.get(myId).tickUpdate(dt);
 	}
 	if(!dataUpdated) {
 		dataUpdated = true;
@@ -511,12 +667,8 @@ function frame() {
 			i[1].update();
 		}
 	}
-	if(isGameActive && map) {
-		map.forEach(function(row, i, maparr) {
-			row.forEach(function(item, j, rowarr) {
-				item.update();
-			});
-		});
+	if(isGameActive) {
+		map.update();
 	}
 	backgroundSprite.scale.set(Math.max(window.innerWidth / 1920, window.innerHeight / 1080), Math.max(window.innerWidth / 1920, window.innerHeight / 1080));
 	renderer.resize(window.innerWidth, window.innerHeight);
