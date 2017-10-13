@@ -416,7 +416,7 @@ class PhysicPrimitive {
 	}
 }
 
-var debugMovement = true;
+var debugMovement = false;
 
 class Player {
 	constructor(name, id, socket) {
@@ -424,7 +424,7 @@ class Player {
 		this.id = id;
 
 		this.physics = new PhysicPrimitive();
-		this.physics.pos = new Vector2(200, -100);
+		this.physics.pos = new Vector2(500, -10000);
 		this.physics.size = new Vector2(31.5, 42);
 		this.physics.mxvel = new Vector2(400, 4000);
 		if(!debugMovement) this.physics.acc = new Vector2(0, this.physics.g);
@@ -529,10 +529,10 @@ class Chunk {
 	}
 
 	getStaticObj(arr) {
-		this.chunk.forEach(function(row, i, arr) {
+		this.chunk.forEach(function(row, i, carr) {
 			row.forEach(function(block, j, rarr) {
-				if(block.static) {
-					arr.push(block);
+				if(block.solid) {
+					arr.push(block.physics);
 				}
 			});
 		});
@@ -623,8 +623,8 @@ class GameMap {
 			height.push(Math.floor(perlinNoise.noise(i / 3, 0.5, 0.5) * maxHeight + 1));
 		}
 		for(let i = 0; i < mapSize.x; i++) {
-			for(let j = 0; j < 13; j++) {
-				if(height[i] >= maxHeight + 1 - j) {
+			for(let j = 0; j < maxHeight + 1; j++) {
+				if(height[i] >= maxHeight - j) {
 					this.get(i, j).id = 2;
 					this.get(i, j + 1).id = 3;
 					this.get(i, j + 2).id = 3;

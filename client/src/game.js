@@ -90,6 +90,7 @@ var dataUpdated = false;
 const eps = 1e-6;
 const chunkSize = 8;
 var mapSize = new Vector2(512, 128);
+var renderDistance = 30;
 
 class GraphicsPrimitive {
 	constructor() {
@@ -508,7 +509,7 @@ class Chunk {
 										 Math.abs(this.physics.pos.x + chunkSize - players.get(myId).physics.rpos.x)), 
 								Math.min(Math.abs(this.physics.pos.y - players.get(myId).physics.rpos.y), 
 										 Math.abs(this.physics.pos.y + chunkSize - players.get(myId).physics.rpos.y))); 
-			if(dist <= 16) {
+			if(dist <= renderDistance) {
 				chunkScenes[this.physics.rpos.x][this.physics.rpos.y].visible = true;
 				return true;
 			}
@@ -544,8 +545,8 @@ class GameMap {
 			height.push(Math.floor(perlinNoise.noise(i / 3, 0.5, 0.5) * maxHeight + 1));
 		}
 		for(let i = 0; i < mapSize.x; i++) {
-			for(let j = 0; j < 13; j++) {
-				if(height[i] >= maxHeight + 1 - j) {
+			for(let j = 0; j < maxHeight; j++) {
+				if(height[i] >= maxHeight - j) {
 					this.get(i, j).id = 2;
 					this.get(i, j).id = 3;
 					this.get(i, j).id = 3;
