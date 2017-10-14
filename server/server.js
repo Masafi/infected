@@ -72,7 +72,7 @@ io.on('connection', function(socket) {
 			var tok = pl.network.makeToken();
 			usersNetwork.insert({'id': nid, 'socket': socket.id.toString(), 'token': tok});
 			socket.emit('reg-success', tok, nid, name);
-			map.emitMap();
+			map.emitMap(socket);
 			console.log(name +  " joined the game. Total: " + usersNetwork().count());
 		}
 	});
@@ -424,7 +424,7 @@ class Player {
 		this.id = id;
 
 		this.physics = new PhysicPrimitive();
-		this.physics.pos = new Vector2(500, -10000);
+		this.physics.pos = new Vector2(500, -1000);
 		this.physics.size = new Vector2(31.5, 42);
 		this.physics.mxvel = new Vector2(400, 4000);
 		if(!debugMovement) this.physics.acc = new Vector2(0, this.physics.g);
@@ -619,8 +619,9 @@ class GameMap {
 
 	generateMap() {
 		var height = [];
+		var seed = Math.random();
 		for(let i = 0; i < mapSize.x; i++) {
-			height.push(Math.floor(perlinNoise.noise(i / 3, 0.5, 0.5) * maxHeight + 1));
+			height.push(Math.floor(perlinNoise.noise(i / 3, seed, seed) * maxHeight + 1));
 		}
 		for(let i = 0; i < mapSize.x; i++) {
 			for(let j = 0; j < maxHeight + 1; j++) {
@@ -654,11 +655,16 @@ class GameMap {
 		this.getChunk().set(i, j, val);	
 	}
 
-	emitChunk(i, j) {
-		io.to('users').emit('map-chunk', this.map[i][j]);
+	emitChunk(i, j, socket = undefined) {
+		if(!socket) {
+			io.to('users').emit('map-chunk', this.map[i][j]);
+		}
+		else {
+			socket.emit('map-chunk', this.map[i][j]);
+		}
 	}
 
-	emitMap() {
+	emitMap(socket = undefined) {
 		var self = this;
 		this.map.forEach(function(row, i, arr) {
 			row.forEach(function(item, j, rarr) {
@@ -673,6 +679,7 @@ var map = new GameMap();
 function setup() {
 	map.generateMap();
 	setInterval(tick, 16);
+	console.log("Server started successfully");
 }
 
 setup();
@@ -681,6 +688,9 @@ function tick() {
 	var curTime = new Date().getTime();
 	var dt = (curTime - lastTickTime) / 1000;
 	lastTickTime = curTime;
+	if(dt >= 0.5) {
+		return;
+	}
 	var data = [];
 	players.forEach(function (player, i, arr) {
 		if(player == undefined) return;
