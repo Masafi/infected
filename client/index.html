@@ -5,13 +5,14 @@
 			Infected
 		</title>
 		<link rel="stylesheet" type="text/css" href="css/styles.css">
-		<script type="text/javascript" src="libs/pixi.min.js"></script>
+		<script type="text/javascript" src="libs/pixi.js"></script>
 		<script type="text/javascript" src="libs/socket.io.js"></script>
+		<script type="text/javascript" src="libs/papaparse.js"></script>
 	</head>
 	<body>
 		<script type="text/javascript" src="src/client.js"></script>
 		<script type="text/javascript" src="src/game.js"></script>
-		<canvas id="game" width="500" height="500"></canvas>
+		<canvas id="game" width="500" height="500" onmousedown="mouseDown(event, this)"></canvas>
 		<div id="nicknameForm">
 			<input type="text" name="nickname" hint="Nickname" size="20" onkeydown="if (event.keyCode == 13) play()">
 			<br>

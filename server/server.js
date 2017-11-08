@@ -7,7 +7,7 @@ var io = require('socket.io')(server, {
 	pingTimeout: 10000
 });
 var jwt = require('jsonwebtoken');
-var jwtSecretKey = "infectednotsecretkey";
+var jwtSecretKey = "supersecrettodochange";
 var taffy = require('taffydb');
 var fs = require('fs');
 
@@ -80,6 +80,13 @@ io.on('connection', function(socket) {
 	socket.on('keyboard', function (key, state, token) {
 		if(verifyToken(token)) {
 			players[usersNetwork({'token': token}).first().id].keys[key] = state;
+		}
+	});
+
+	socket.on('mouse', function (pos, token) {
+		if(verifyToken(token)) {
+			players[usersNetwork({'token': token}).first().id].mousePos = new Vector2(pos.x, pos.y);
+			players[usersNetwork({'token': token}).first().id].mouseUpdated = true;
 		}
 	});
 
@@ -184,7 +191,7 @@ class Vector2 {
 const eps = 1e-6;
 const chunkSize = 8;
 var mapSize = new Vector2(512, 128);
-var CellSize = new Vector2(32, 32);
+var CellSize = new Vector2(16, 16);
 const maxHeight = 15; 
 
 class NetworkPrimitive {
@@ -212,6 +219,7 @@ class PhysicPrimitive {
 		this.vel = new Vector2(0, 0);
 		this.acc = new Vector2(0, 0);
 		this.mxvel = new Vector2(0, 0);
+		this.pivot = new Vector2(0, 0);
 		this._rpos = new Vector2(0, 0);
 		this.rscale = CellSize.add(new Vector2(0, 0));
 		this.standing = false;
@@ -291,26 +299,8 @@ class PhysicPrimitive {
 		}
 	}
 
-	intersects(that) {
-		return  (this.pos.x > that.pos.x && this.pos.x < that.pos.x + that.size.x ||
-				this.pos.x + this.size.x > that.pos.x && this.pos.x + this.size.x < that.pos.x + that.size.x) &&
-				(this.pos.y > that.pos.y && this.pos.y < that.pos.y + that.size.y ||
-				this.pos.y + this.size.y > that.pos.y && this.pos.y + this.size.y < that.pos.y + that.size.y) ||
-				(that.pos.x > this.pos.x && that.pos.x < this.pos.x + this.size.x ||
-				that.pos.x + that.size.x > this.pos.x && that.pos.x + that.size.x < this.pos.x + this.size.x) &&
-				(that.pos.y > this.pos.y && that.pos.y < this.pos.y + this.size.y ||
-				that.pos.y + that.size.y > this.pos.y && that.pos.y + that.size.y < this.pos.y + this.size.y);
-	}
-
 	intersectsWithBorders(that) {
-		return  (this.pos.x >= that.pos.x && this.pos.x <= that.pos.x + that.size.x ||
-				this.pos.x + this.size.x >= that.pos.x && this.pos.x + this.size.x <= that.pos.x + that.size.x) &&
-				(this.pos.y >= that.pos.y && this.pos.y <= that.pos.y + that.size.y ||
-				this.pos.y + this.size.y >= that.pos.y && this.pos.y + this.size.y <= that.pos.y + that.size.y) ||
-				(that.pos.x >= this.pos.x && that.pos.x <= this.pos.x + this.size.x ||
-				that.pos.x + that.size.x >= this.pos.x && that.pos.x + that.size.x <= this.pos.x + this.size.x) &&
-				(that.pos.y >= this.pos.y && that.pos.y <= this.pos.y + this.size.y ||
-				that.pos.y + that.size.y >= this.pos.y && that.pos.y + that.size.y <= this.pos.y + this.size.y);
+		return true || Math.abs(this.pos.x - that.pos.x) * 2 <= (this.size.x + that.size.x) && Math.abs(this.pos.y - that.pos.y) * 2 <= (this.size.y + that.size.y);
 	}
 
 	resolveIntersection(that) {
@@ -398,21 +388,21 @@ class PhysicPrimitive {
 	}
 
 	set pos(npos) {
-		this._pos = npos;
-		this._rpos = npos.div(this.rscale);
+		this._pos = npos.sub(this.pivot);
+		this._rpos = this._pos.div(this.rscale);
 	}
 	
 	set rpos(npos) {
-		this._pos = npos.mul(this.rscale);
-		this._rpos = npos;
+		this._rpos = npos.sub(this.pivot.div(this.rscale));
+		this._pos = this._rpos.mul(this.rscale);
 	}
 
 	get pos() {
-		return this._pos;
+		return this._pos.add(this.pivot);
 	}
 
 	get rpos() {
-		return this._rpos;
+		return this._rpos.add(this.pivot.div(this.rscale));
 	}
 }
 
@@ -424,8 +414,8 @@ class Player {
 		this.id = id;
 
 		this.physics = new PhysicPrimitive();
-		this.physics.pos = new Vector2(500, -1000);
-		this.physics.size = new Vector2(31.5, 42);
+		this.physics.pos = new Vector2(500, 0);
+		this.physics.size = new Vector2(15, 21);
 		this.physics.mxvel = new Vector2(400, 4000);
 		if(!debugMovement) this.physics.acc = new Vector2(0, this.physics.g);
 		else this.physics.acc = new Vector2(0, 0);
@@ -434,14 +424,17 @@ class Player {
 		this.network.nickname = name;
 		this.network.id = id;
 		this.network.socket = socket;
+
+		this.mousePos = new Vector2(0, 0);
+		this.mouseUpdated = false;
 	}
 
 	processKeys() {
 		if (this.keys['a']) {
-			this.physics.vel.x = -200;
+			this.physics.vel.x = -125;
 		}
 		else if (this.keys['d']) {
-			this.physics.vel.x = 200;
+			this.physics.vel.x = 125;
 		}
 		else {
 			this.physics.vel.x = 0;
@@ -449,7 +442,7 @@ class Player {
 
 		if(!debugMovement) {
 			if (this.keys['w'] && this.physics.standing) {
-				this.physics.vel.y = -500;
+				this.physics.vel.y = -400;
 			}
 		}
 		else {
@@ -461,6 +454,16 @@ class Player {
 			}
 			else {
 				this.physics.vel.y = 0;
+			}
+		}
+
+		if(this.mouseUpdated) {
+			var rpos = this.mousePos.div(CellSize);
+			if(map.checkCoords(rpos.x, rpos.y)) {
+				map.get(Math.floor(rpos.x), Math.floor(rpos.y)).id = 0;
+				var chunkPos = map.getChunkID(rpos.x, rpos.y);
+				map.emitChunk(chunkPos.x, chunkPos.y);
+				this.mouseUpdated = false;
 			}
 		}
 	}
@@ -491,6 +494,18 @@ class Player {
 		checkAdd(iPos.add(new Vector2(-1, 1)));
 		checkAdd(iPos.add(new Vector2(0, 1)));
 		checkAdd(iPos.add(new Vector2(1, 1)));
+		var boundingBox = new PhysicPrimitive();
+		boundingBox.pos = new Vector2(-1000, -1000);
+		boundingBox.size = new Vector2(1000, 2000 + mapSize.y * CellSize.y);
+		collisionObjects.push(boundingBox);
+		boundingBox = new PhysicPrimitive();
+		boundingBox.pos = new Vector2(-1000, mapSize.y * CellSize.y);
+		boundingBox.size = new Vector2(2000 + mapSize.x * CellSize.x, 1000);
+		collisionObjects.push(boundingBox);
+		boundingBox = new PhysicPrimitive();
+		boundingBox.pos = new Vector2(mapSize.x * CellSize.x, -1000);
+		boundingBox.size = new Vector2(1000, 2000 + mapSize.y * CellSize.y);
+		collisionObjects.push(boundingBox);
 		this.physics.resolveCollision(collisionObjects, dt);
 	}
 }
@@ -506,6 +521,7 @@ class Block {
 	set id(nid) {
 		this._id = nid;
 		if(this._id >= 1) this.solid = true;
+		else this.solid = false;
 	}
 	get id() {
 		return this._id;
@@ -619,24 +635,48 @@ class GameMap {
 
 	generateMap() {
 		var height = [];
-		var seed = Math.random();
+		var seed = Math.random() * 10;
+		var yOffset = 15;
 		for(let i = 0; i < mapSize.x; i++) {
-			height.push(Math.floor(perlinNoise.noise(i / 3, seed, seed) * maxHeight + 1));
+			height.push(Math.floor(perlinNoise.noise(i / 10, seed, seed) * maxHeight + 1));
 		}
 		for(let i = 0; i < mapSize.x; i++) {
 			for(let j = 0; j < maxHeight + 1; j++) {
 				if(height[i] >= maxHeight - j) {
-					this.get(i, j).id = 2;
-					this.get(i, j + 1).id = 3;
-					this.get(i, j + 2).id = 3;
-					this.get(i, j + 3).id = 3;
+					this.get(i, j + yOffset).id = 1;
+					this.get(i, j + 1 + yOffset).id = 3;
+					this.get(i, j + 2 + yOffset).id = 3;
+					var curRand = Math.random() * 10;
+					if(curRand <= 5) {
+						this.get(i, j + 3 + yOffset).id = 3;
+						if(curRand <= 2) {
+							this.get(i, j + 4 + yOffset).id = 3;
+						}
+					}
 					break;
 				}
 			}
-			for(let j = 1; j < mapSize.y; j++) {
-				if(this.get(i, j - 1).id >= 1 && this.get(i, j).id == 0) this.get(i, j).id = 1;
+			for(let j = 1; j < maxHeight + 2 + yOffset; j++) {
+				if(this.get(i, j - 1).id >= 1 && this.get(i, j).id == 0) {
+					this.get(i, j).id = 2;
+				}
+			}
+			for(let j = maxHeight + 2 + yOffset; j < mapSize.y; j++) {
+				var curNoise = perlinNoise.noise(i / 10, j / 10, seed) * 100;
+				if(curNoise <= Math.max(60, 100 - j)) {
+					if(Math.random() * 100 <= 1) {
+						this.get(i, j).id = 4;
+					}
+					else {
+						this.get(i, j).id = 2;
+					}
+				}
 			}
 		}
+	}
+
+	checkCoords(i, j) {
+		return i >= 0 && j >= 0 && i < mapSize.x && j < mapSize.y;
 	}
 
 	getChunk(i, j) {

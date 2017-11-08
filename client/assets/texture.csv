@@ -1,0 +1,4 @@
+﻿sprite;flower;bush;tree;fence;chest;sign
+49;7;1;1;1;1;1
+player_run;player_jump;player_hit;player_slash;player_walk;;
+4;4;3;2;4;;

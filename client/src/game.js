@@ -1,13 +1,14 @@
-const atlas = 'assets/atlas.json';
-const playerSprite = 'player.png';
-const blockSpritePref = 'block';
-const blockSpriteSuf = '.png';
+const textureCSV = 'assets/texture.csv';
+const atlasSprite = 'assets/atlas.json';
+const playerSprite = 'assets/player.json';
 const backgroundImage = 'assets/background.png';
-const keycodes = [[87, 'w'], [65, 'a'], [83, 's'], [68, 'd']];
-const gScale = 1;
+const keycodes = [[87, 'w'], [65, 'a'], [83, 's'], [68, 'd']];	
+var gScale = 2;
+var playerAnim = [['player_run', 1, false], ['player_run', 4, true], ['player_jump_up', 2, false], ['player_jump_down', 2, false]];
 
 PIXI.loader
-	.add(atlas)
+	.add(atlasSprite)
+	.add(playerSprite)
 	.add(backgroundImage)
 	.load(setup);
 
@@ -84,13 +85,14 @@ var players = new Map();
 var myNick = undefined;
 var myId = undefined;
 var camera = new Vector2(0, 0);
-var CellSize = new Vector2(32, 32);
+var CellSize = new Vector2(16, 16);
 var lastTickTime = new Date().getTime();
 var dataUpdated = false;
 const eps = 1e-6;
 const chunkSize = 8;
 var mapSize = new Vector2(512, 128);
 var renderDistance = 30;
+var playerAnimations = [];
 
 class GraphicsPrimitive {
 	constructor() {
@@ -114,6 +116,13 @@ class GraphicsPrimitive {
 
 	unstageFromScene(scene) {
 		scene.removeChild(this.sprite);
+	}
+
+	updateAnimation(info) {
+		this.sprite = new PIXI.extras.AnimatedSprite(info[0]);
+		this.sprite.loop = info[1];
+		this.sprite.play();
+		this.sprite.animationSpeed = 0.2;
 	}
 }
 
@@ -332,18 +341,36 @@ class Player {
 	constructor(name) {
 		this.physics = new PhysicPrimitive();
 		this.physics.pos = new Vector2(200, -100);
-		this.physics.size = new Vector2(31.5, 42);
+		this.physics.size = new Vector2(15, 21);
 		this.physics.mxvel = new Vector2(400, 4000);
 		this.physics.acc = new Vector2(0, this.physics.g);
+		this.direction = 0;
 
-		this.graphics = new GraphicsPrimitive();
-		this.graphics.initSprite(playerSprite);
-		this.graphics.stageToScene(objects);
+		this.graphics = [];
+		var self = this;
+		playerAnimations.forEach(function(item, i, arr) {
+			self.graphics.push(new GraphicsPrimitive());
+			self.graphics[i].updateAnimation(playerAnimations[i]);
+			self.graphics[i].stageToScene(objects);
+			self.graphics[i].sprite.pivot.x = 9;
+			if(i > 0) {
+				self.graphics[i].sprite.visible = false;
+			}
+		});
+		this.currentAnim = 0;
+		this.updateAnimation(0);
 		this.nameSprite = new GraphicsPrimitive();
 		this.nameSprite.sprite = new PIXI.Text(name, {fontFamily: "Arial", fontSize: 16, fill: "Black"});
 		this.nameSprite.stageToScene(objects);
 		this.name = name;
 		this.updated = true;
+	}
+
+	updateAnimation(id) {
+		this.graphics[this.currentAnim].sprite.visible = false;
+		this.currentAnim = id;
+		this.graphics[this.currentAnim].sprite.visible = true;
+		this.graphics[this.currentAnim].sprite.play();
 	}
 
 	update(data = undefined) {
@@ -363,8 +390,37 @@ class Player {
 			this.physics.g = data.physics.g;
 			this.physics.standing = data.physics.standing;
 		}
-		this.graphics.pos = this.pos;
-		this.graphics.updatePos(camera);
+		if(this.physics.vel.y > 0) {
+			if(this.currentAnim != 2) {
+				this.updateAnimation(2);
+			}
+		}
+		else if(this.physics.vel.y < 0) {
+			if(this.currentAnim != 3) {
+				this.updateAnimation(3);
+			}
+		}
+		else if(this.physics.vel.x != 0) {
+			if(this.currentAnim != 1) {
+				this.updateAnimation(1);
+			}
+		}
+		else {
+			this.updateAnimation(0);
+		}
+		var self = this;
+		this.graphics.forEach(function(item, i, arr) {
+			if(self.physics.vel.x > 0) {
+				self.direction = 0;
+				item.sprite.scale.x = 1;
+			}
+			else if(self.physics.vel.x < 0) {
+				self.direction = 1;
+				item.sprite.scale.x = -1;
+			}
+			item.pos = self.pos.add(new Vector2(8, -1));
+			item.updatePos(camera);
+		});
 		this.nameSprite.pos = this.pos.add(new Vector2(0, -25));
 		this.nameSprite.updatePos(camera);
 	}
@@ -419,13 +475,9 @@ class Block {
 		this._id = 0;
 		this.scene = scene;
 		this.graphics = new GraphicsPrimitive();
-		this.graphics.initSprite(this.getTextureName());
+		this.graphics.initSprite('sprite_0' + this._id + '.png');
 		this.solid = false;
 		this.id = 0;
-	}
-
-	getTextureName() {
-		return blockSpritePref + (this.id >= 100 ? this.id : '0' + (this.id >= 10 ? this.id : '0' + this.id)) + blockSpriteSuf;
 	}
 
 	update(data = undefined) {
@@ -442,7 +494,7 @@ class Block {
 		var oldid = this._id;
 		this._id = nid;
 		if(nid != oldid) {
-			this.graphics.sprite.setTexture(PIXI.Texture.fromFrame(this.getTextureName()));
+			this.graphics.sprite.texture = PIXI.Texture.fromFrame('sprite_0' + this._id + '.png');
 			if(nid >= 1 && oldid == 0) {
 				this.solid = true;
 				this.graphics.stageToScene(this.scene);
@@ -509,7 +561,11 @@ class Chunk {
 										 Math.abs(this.physics.pos.x + chunkSize - players.get(myId).physics.rpos.x)), 
 								Math.min(Math.abs(this.physics.pos.y - players.get(myId).physics.rpos.y), 
 										 Math.abs(this.physics.pos.y + chunkSize - players.get(myId).physics.rpos.y))); 
-			if(dist <= renderDistance) {
+			var dist2 = Math.max(Math.min(Math.abs(this.physics.pos.x - (camera.x + window.innerWidth / gScale / 2) / CellSize.x), 
+										 Math.abs(this.physics.pos.x + chunkSize - (camera.x + window.innerWidth / gScale / 2) / CellSize.x)), 
+								Math.min(Math.abs(this.physics.pos.y - (camera.y + window.innerHeight / gScale / 2) / CellSize.y), 
+										 Math.abs(this.physics.pos.y + chunkSize - (camera.y + window.innerHeight / gScale / 2) / CellSize.y))); 
+			if(dist2 <= renderDistance) {
 				chunkScenes[this.physics.rpos.x][this.physics.rpos.y].visible = true;
 				return true;
 			}
@@ -603,7 +659,8 @@ function setup() {
 	objects = new PIXI.Container();
 	backgroundSprite = new PIXI.Sprite(Resources[backgroundImage].texture);
 
-	objects.scale.set(gScale, gScale);
+	loadAnimation();
+	gameScene.scale.set(gScale, gScale);
 	gameScene.addChild(objects);
 	gameScene.addChild(mapScene);
 	screenStage.addChild(backgroundSprite);
@@ -618,6 +675,20 @@ function setup() {
 	map = new GameMap();
 	
 	frame();
+}
+
+function loadAnimation() {
+	var getTextureName = function(pref, id) {
+		return pref + "_" + (id >= 10 ? '' : '0') + id + ".png";
+	};
+	playerAnim.forEach(function(item, i, arr)	 {
+		playerAnimations.push([]);
+		playerAnimations[i].push([]);
+		for (var j = 0; j < item[1]; j++) {
+				playerAnimations[i][0].push(PIXI.Texture.fromFrame(getTextureName(item[0], j)));
+		}
+		playerAnimations[i].push(item[2]);
+	});
 }
 
 var fps = 0;
@@ -651,7 +722,11 @@ function frame() {
 		var curPlayer = players.get(myId);
 		if(players.has(myId)) {
 			camera = players.get(myId).pos.sub(new Vector2(window.innerWidth / gScale / 2, window.innerHeight / gScale / 2));
-			players.get(myId).graphics.updatePos(camera);
+			camera.x = Math.max(Math.min(camera.x, mapSize.x * CellSize.x - window.innerWidth / gScale), 0);
+			camera.y = Math.max(Math.min(camera.y, mapSize.y * CellSize.y - window.innerHeight / gScale), 0);
+			players.get(myId).graphics.forEach(function(item, i, arr) {
+				item.updatePos(camera);
+			});
 			players.get(myId).nameSprite.updatePos(camera);
 		}
 		gameData.forEach(function(item, i, arr) {
@@ -672,7 +747,7 @@ function frame() {
 		map.update();
 	}
 	backgroundSprite.scale.set(Math.max(window.innerWidth / 1920, window.innerHeight / 1080), Math.max(window.innerWidth / 1920, window.innerHeight / 1080));
-	renderer.resize(window.innerWidth, window.innerHeight);
+	renderer.resize(window.innerWidth, window.innerHeight - 1);
 	renderer.render(screenStage);
 }
 
@@ -714,4 +789,13 @@ function keyboard(keyCode, ch) {
 	window.addEventListener("keydown", key.downHandler.bind(key), false);
 	window.addEventListener("keyup", key.upHandler.bind(key), false);
 	return key;
+}
+
+function mouseDown(event, canvas) {
+	if(isGameActive) {
+		var pos = new Vector2();
+		pos.x = event.pageX - canvas.offsetLeft;
+		pos.y = event.pageY - canvas.offsetTop;
+		socket.emit("mouse", pos.div(new Vector2(gScale, gScale)).add(camera), token);
+	}
 }
