@@ -488,7 +488,7 @@ class Player {
 					});
 					if(good && block.id == 0) {
 						block.id = 3;
-						this.energy -= 10;
+						this.energy -= 5;
 						this.stone -= 10;
 						var chunkid = map.getChunkID(Math.floor(rpos.x), Math.floor(rpos.y));
 						map.emitChunk(chunkid.x, chunkid.y);
