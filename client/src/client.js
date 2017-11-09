@@ -35,6 +35,10 @@ socket.on('map-chunk', function(chunk) {
 	updateProgress();
 });
 
+socket.on('blockBreaking', function(pos) {
+	map.get(pos.x, pos.y).breakMe();
+});
+
 function updateProgress() {
 	document.getElementById('mapLoadingProgress').setAttribute('value', Math.floor(chunksGot * chunkSize * chunkSize / (mapSize.x * mapSize.y) * 100));
 	if(chunksGot >= Math.floor((mapSize.x * mapSize.y) / (chunkSize * chunkSize))) {
@@ -54,6 +58,7 @@ function play() {
 
 function activateGame() {
 	document.getElementById('loadingForm').style.display = 'none';
+	document.getElementById('inventory').style.display = 'inline';
 	isGameActive = 1;
 	screenStage.addChild(gameScene);
 	lastTickTime = new Date().getTime();

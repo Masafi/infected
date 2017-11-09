@@ -34,6 +34,21 @@ canvas {
 	color: red;
 }
 
+#inventory {
+	background: url("../assets/gui/background.png");
+	width: 140px;
+	height: 60px;
+	display: none;
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	transform: translate(-50%, -112.5%) scale(1.25, 1.25);
+}
+
+#invTable {
+	font-size: 14px;
+}
+
 progress {
 	background-color: #f3f3f3;
 	border: 0;

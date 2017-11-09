@@ -83,10 +83,11 @@ io.on('connection', function(socket) {
 		}
 	});
 
-	socket.on('mouse', function (pos, token) {
+	socket.on('mouse', function (pos, button, token) {
 		if(verifyToken(token)) {
 			players[usersNetwork({'token': token}).first().id].mousePos = new Vector2(pos.x, pos.y);
 			players[usersNetwork({'token': token}).first().id].mouseUpdated = true;
+			players[usersNetwork({'token': token}).first().id].mouseButton = button;
 		}
 	});
 
@@ -300,7 +301,10 @@ class PhysicPrimitive {
 	}
 
 	intersectsWithBorders(that) {
-		return true || Math.abs(this.pos.x - that.pos.x) * 2 <= (this.size.x + that.size.x) && Math.abs(this.pos.y - that.pos.y) * 2 <= (this.size.y + that.size.y);
+		return   !(that.pos.x > this.pos.x + this.size.x
+				|| that.pos.x + that.size.x < this.pos.x
+				|| that.pos.y > this.pos.y + this.size.y
+				|| that.pos.y + that.size.y < this.pos.y);
 	}
 
 	resolveIntersection(that) {
@@ -427,6 +431,11 @@ class Player {
 
 		this.mousePos = new Vector2(0, 0);
 		this.mouseUpdated = false;
+
+		this.workers = 3;
+		this.energy = 100;
+		this.stone = 100;
+		this.iron = 100;
 	}
 
 	processKeys() {
@@ -459,12 +468,35 @@ class Player {
 
 		if(this.mouseUpdated) {
 			var rpos = this.mousePos.div(CellSize);
-			if(map.checkCoords(rpos.x, rpos.y)) {
-				map.get(Math.floor(rpos.x), Math.floor(rpos.y)).id = 0;
-				var chunkPos = map.getChunkID(rpos.x, rpos.y);
-				map.emitChunk(chunkPos.x, chunkPos.y);
-				this.mouseUpdated = false;
+			if(this.mouseButton == 0) {
+				if(map.checkCoords(rpos.x, rpos.y) && this.workers >= 1 && this.energy >= 10) {
+					if(map.get(Math.floor(rpos.x), Math.floor(rpos.y)).breakMe()) {
+						this.workers--;
+						this.energy -= 10;
+						map.updateBlock(Math.floor(rpos.x), Math.floor(rpos.y), [this.id]);
+					}
+				}
 			}
+			else if(this.mouseButton == 2) {
+				if(map.checkCoords(rpos.x, rpos.y) && this.workers >= 1 && this.energy >= 5 && this.stone >= 10) {
+					var block = map.get(Math.floor(rpos.x), Math.floor(rpos.y));
+					var good = true;
+					players.forEach(function(item, i, arr) {
+						if(good && item.physics.intersectsWithBorders(block.physics)) {
+							good = false;
+						}
+					});
+					if(good && block.id == 0) {
+						block.id = 3;
+						this.energy -= 10;
+						this.stone -= 10;
+						var chunkid = map.getChunkID(Math.floor(rpos.x), Math.floor(rpos.y));
+						map.emitChunk(chunkid.x, chunkid.y);
+					}
+					this.mouseUpdated = false;
+				}
+			}
+			this.mouseUpdated = false;
 		}
 	}
 
@@ -516,13 +548,50 @@ class Block {
 		this.physics.size = new Vector2(0, 0).add(CellSize);
 		this.id = 0;
 		this.solid = false;
+
+		this.breakable = false;
+		this.isBreaking = false;
+		this.breakTime = 0;
+		this.breakTimer = 0;
+	}
+
+	update(dt) {
+		var changed = false;
+		if(this.isBreaking) {
+			this.breakTimer += dt;
+			if(this.breakTimer >= this.breakTime) {
+				this.isBreaking = false;
+				this.id = 0;
+				changed = true;
+			}
+		}
+		return [this.isBreaking, changed];
+	}
+
+	breakMe() {
+		if(this.breakable && !this.isBreaking){
+			this.isBreaking = true;
+			this.breakTimer = 0;
+			io.to('users').emit('blockBreaking', this.physics.rpos);
+			return true;
+		}
+		return false;
 	}
 
 	set id(nid) {
 		this._id = nid;
-		if(this._id >= 1) this.solid = true;
-		else this.solid = false;
+		if(this._id >= 1) {
+			this.solid = true;
+			this.breakable = true;
+			this.breakTime = (this._id % 2 ? 2 : 4);
+		}
+		else {
+			this.solid = false;
+			this.breakable = false;
+			this.breakTime = 0;
+		}
 	}
+
 	get id() {
 		return this._id;
 	}
@@ -625,6 +694,7 @@ var perlinNoise = new function() {
 class GameMap {
 	constructor() {
 		this.map = [];
+		this.updateQueue = [];
 		for(let i = 0; i < mapSize.x / chunkSize; i++) {
 			this.map.push([]);
 			for(let j = 0; j < mapSize.y / chunkSize; j++) {
@@ -712,6 +782,37 @@ class GameMap {
 			});
 		});
 	}
+
+	updateBlock(i, j, info) {
+		this.updateQueue.push([i, j, info]);
+	}
+
+	update(dt) {
+		var nq = [];
+		var self = this;
+		this.updateQueue.forEach(function(item, i, arr) {
+			var res = self.get(item[0], item[1]).update(dt);
+			if(res[0]) {
+				nq.push(item);
+			}
+			else {
+				var pl = players[item[2][0]];
+				if(pl) {
+					pl.workers++;
+					pl.stone += 10;
+				}
+			}
+			if(res[1]) {
+				var chunkid = self.getChunkID(item[0], item[1]);
+				self.emitChunk(chunkid.x, chunkid.y);
+			}
+		});
+		this.updateQueue = nq;
+	}
+}
+
+var Wrapper = {
+
 }
 
 var map = new GameMap();
@@ -737,13 +838,19 @@ function tick() {
 		//Processing physics
 		player.tickUpdate(dt);
 
+		player.energy += dt * 2;
 		//Data for transfer
 		var iData = {};
 		iData.id = player.id;
 		iData.physics = player.physics;
 		iData.name = player.network.nickname;
+		iData.workers = player.workers;
+		iData.energy = player.energy;
+		iData.stone = player.stone;
+		iData.iron = player.iron;
 		data.push(iData);
 	});
+	map.update(dt);
 
 	io.to('users').emit('update', data);
 }

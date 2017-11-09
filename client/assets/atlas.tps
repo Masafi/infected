@@ -199,6 +199,71 @@
         </struct>
         <key>individualSpriteSettings</key>
         <map type="IndividualSpriteSettingsMap">
+            <key type="filename">split/breaking_0.png</key>
+            <key type="filename">split/breaking_1.png</key>
+            <key type="filename">split/breaking_2.png</key>
+            <key type="filename">split/breaking_3.png</key>
+            <key type="filename">split/selectBorder.png</key>
+            <key type="filename">split/sprite_00.png</key>
+            <key type="filename">split/sprite_01.png</key>
+            <key type="filename">split/sprite_02.png</key>
+            <key type="filename">split/sprite_03.png</key>
+            <key type="filename">split/sprite_04.png</key>
+            <key type="filename">split/sprite_05.png</key>
+            <key type="filename">split/sprite_06.png</key>
+            <key type="filename">split/sprite_07.png</key>
+            <key type="filename">split/sprite_08.png</key>
+            <key type="filename">split/sprite_09.png</key>
+            <key type="filename">split/sprite_10.png</key>
+            <key type="filename">split/sprite_11.png</key>
+            <key type="filename">split/sprite_12.png</key>
+            <key type="filename">split/sprite_13.png</key>
+            <key type="filename">split/sprite_14.png</key>
+            <key type="filename">split/sprite_15.png</key>
+            <key type="filename">split/sprite_16.png</key>
+            <key type="filename">split/sprite_17.png</key>
+            <key type="filename">split/sprite_18.png</key>
+            <key type="filename">split/sprite_19.png</key>
+            <key type="filename">split/sprite_20.png</key>
+            <key type="filename">split/sprite_21.png</key>
+            <key type="filename">split/sprite_22.png</key>
+            <key type="filename">split/sprite_23.png</key>
+            <key type="filename">split/sprite_24.png</key>
+            <key type="filename">split/sprite_25.png</key>
+            <key type="filename">split/sprite_26.png</key>
+            <key type="filename">split/sprite_27.png</key>
+            <key type="filename">split/sprite_28.png</key>
+            <key type="filename">split/sprite_29.png</key>
+            <key type="filename">split/sprite_30.png</key>
+            <key type="filename">split/sprite_31.png</key>
+            <key type="filename">split/sprite_32.png</key>
+            <key type="filename">split/sprite_33.png</key>
+            <key type="filename">split/sprite_34.png</key>
+            <key type="filename">split/sprite_35.png</key>
+            <key type="filename">split/sprite_36.png</key>
+            <key type="filename">split/sprite_37.png</key>
+            <key type="filename">split/sprite_38.png</key>
+            <key type="filename">split/sprite_39.png</key>
+            <key type="filename">split/sprite_40.png</key>
+            <key type="filename">split/sprite_41.png</key>
+            <key type="filename">split/sprite_42.png</key>
+            <key type="filename">split/sprite_43.png</key>
+            <key type="filename">split/sprite_44.png</key>
+            <key type="filename">split/sprite_45.png</key>
+            <key type="filename">split/sprite_46.png</key>
+            <key type="filename">split/sprite_47.png</key>
+            <struct type="IndividualSpriteSettings">
+                <key>pivotPoint</key>
+                <point_f>0.5,0.5</point_f>
+                <key>scale9Enabled</key>
+                <false/>
+                <key>scale9Borders</key>
+                <rect>4,4,8,8</rect>
+                <key>scale9Paddings</key>
+                <rect>4,4,8,8</rect>
+                <key>scale9FromFile</key>
+                <false/>
+            </struct>
             <key type="filename">split/bush.png</key>
             <struct type="IndividualSpriteSettings">
                 <key>pivotPoint</key>
@@ -305,66 +370,6 @@
                 <key>scale9FromFile</key>
                 <false/>
             </struct>
-            <key type="filename">split/sprite_00.png</key>
-            <key type="filename">split/sprite_01.png</key>
-            <key type="filename">split/sprite_02.png</key>
-            <key type="filename">split/sprite_03.png</key>
-            <key type="filename">split/sprite_04.png</key>
-            <key type="filename">split/sprite_05.png</key>
-            <key type="filename">split/sprite_06.png</key>
-            <key type="filename">split/sprite_07.png</key>
-            <key type="filename">split/sprite_08.png</key>
-            <key type="filename">split/sprite_09.png</key>
-            <key type="filename">split/sprite_10.png</key>
-            <key type="filename">split/sprite_11.png</key>
-            <key type="filename">split/sprite_12.png</key>
-            <key type="filename">split/sprite_13.png</key>
-            <key type="filename">split/sprite_14.png</key>
-            <key type="filename">split/sprite_15.png</key>
-            <key type="filename">split/sprite_16.png</key>
-            <key type="filename">split/sprite_17.png</key>
-            <key type="filename">split/sprite_18.png</key>
-            <key type="filename">split/sprite_19.png</key>
-            <key type="filename">split/sprite_20.png</key>
-            <key type="filename">split/sprite_21.png</key>
-            <key type="filename">split/sprite_22.png</key>
-            <key type="filename">split/sprite_23.png</key>
-            <key type="filename">split/sprite_24.png</key>
-            <key type="filename">split/sprite_25.png</key>
-            <key type="filename">split/sprite_26.png</key>
-            <key type="filename">split/sprite_27.png</key>
-            <key type="filename">split/sprite_28.png</key>
-            <key type="filename">split/sprite_29.png</key>
-            <key type="filename">split/sprite_30.png</key>
-            <key type="filename">split/sprite_31.png</key>
-            <key type="filename">split/sprite_32.png</key>
-            <key type="filename">split/sprite_33.png</key>
-            <key type="filename">split/sprite_34.png</key>
-            <key type="filename">split/sprite_35.png</key>
-            <key type="filename">split/sprite_36.png</key>
-            <key type="filename">split/sprite_37.png</key>
-            <key type="filename">split/sprite_38.png</key>
-            <key type="filename">split/sprite_39.png</key>
-            <key type="filename">split/sprite_40.png</key>
-            <key type="filename">split/sprite_41.png</key>
-            <key type="filename">split/sprite_42.png</key>
-            <key type="filename">split/sprite_43.png</key>
-            <key type="filename">split/sprite_44.png</key>
-            <key type="filename">split/sprite_45.png</key>
-            <key type="filename">split/sprite_46.png</key>
-            <key type="filename">split/sprite_47.png</key>
-            <struct type="IndividualSpriteSettings">
-                <key>pivotPoint</key>
-                <point_f>0.5,0.5</point_f>
-                <key>scale9Enabled</key>
-                <false/>
-                <key>scale9Borders</key>
-                <rect>4,4,8,8</rect>
-                <key>scale9Paddings</key>
-                <rect>4,4,8,8</rect>
-                <key>scale9FromFile</key>
-                <false/>
-            </struct>
             <key type="filename">split/tree.png</key>
             <struct type="IndividualSpriteSettings">
                 <key>pivotPoint</key>
@@ -440,6 +445,11 @@
             <filename>split/sprite_46.png</filename>
             <filename>split/sprite_47.png</filename>
             <filename>split/tree.png</filename>
+            <filename>split/selectBorder.png</filename>
+            <filename>split/breaking_0.png</filename>
+            <filename>split/breaking_1.png</filename>
+            <filename>split/breaking_2.png</filename>
+            <filename>split/breaking_3.png</filename>
         </array>
         <key>ignoreFileList</key>
         <array/>

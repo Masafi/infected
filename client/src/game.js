@@ -93,6 +93,7 @@ const chunkSize = 8;
 var mapSize = new Vector2(512, 128);
 var renderDistance = 30;
 var playerAnimations = [];
+var selectBorder = undefined;
 
 class GraphicsPrimitive {
 	constructor() {
@@ -118,11 +119,11 @@ class GraphicsPrimitive {
 		scene.removeChild(this.sprite);
 	}
 
-	updateAnimation(info) {
+	updateAnimation(info, time = 0.2) {
 		this.sprite = new PIXI.extras.AnimatedSprite(info[0]);
 		this.sprite.loop = info[1];
 		this.sprite.play();
-		this.sprite.animationSpeed = 0.2;
+		this.sprite.animationSpeed = time;
 	}
 }
 
@@ -364,6 +365,10 @@ class Player {
 		this.nameSprite.stageToScene(objects);
 		this.name = name;
 		this.updated = true;
+		this.workers = 3;
+		this.energy = 100;
+		this.stone = 100;
+		this.iron = 100;
 	}
 
 	updateAnimation(id) {
@@ -389,6 +394,10 @@ class Player {
 			this.physics.size.y = data.physics.size.y;
 			this.physics.g = data.physics.g;
 			this.physics.standing = data.physics.standing;
+			this.workers = data.workers;
+			this.energy = data.energy;
+			this.stone = data.stone;
+			this.iron = data.iron;
 		}
 		if(this.physics.vel.y > 0) {
 			if(this.currentAnim != 2) {
@@ -466,6 +475,42 @@ class Player {
 	set pos(npos) {
 		this.physics.pos = npos;
 	}
+
+	get workers() {
+		return this._workers;
+	}
+
+	set workers(val) {
+		this._workers = val;
+		document.getElementById('workersVal').innerHTML = '' + val;
+	}
+
+	get energy() {
+		return this._energy;
+	}
+
+	set energy(val) {
+		this._energy = val;
+		document.getElementById('energyVal').innerHTML = '' + Math.floor(val);
+	}
+
+	get stone() {
+		return this._stone;
+	}
+
+	set stone(val) {
+		this._stone = val;
+		document.getElementById('stoneVal').innerHTML = '' + Math.floor(val);
+	}
+
+	get iron() {
+		return this._iron;
+	}
+
+	set iron(val) {
+		this._iron = val;
+		document.getElementById('ironVal').innerHTML = '' + Math.floor(val);
+	}
 }
 
 class Block {
@@ -478,6 +523,12 @@ class Block {
 		this.graphics.initSprite('sprite_0' + this._id + '.png');
 		this.solid = false;
 		this.id = 0;
+
+		this.breakable = false;
+		this.isBreaking = false;
+		this.breakTime = 0;
+		this.breakTimer = 0;
+		this.breakingAnim = undefined;
 	}
 
 	update(data = undefined) {
@@ -488,19 +539,46 @@ class Block {
 		}
 		this.graphics.pos = this.physics.pos;
 		this.graphics.updatePos(camera);
+		if(this.breakingAnim) {
+			this.breakingAnim.updatePos(camera);
+		}
+	}
+
+	breakMe() {
+		if(this.breakable && !this.isBreaking) 	{
+			this.isBreaking = true;
+			this.breakTimer = 0;
+			this.breakingAnim = new GraphicsPrimitive();
+			var frames = [];
+			for(let i = 0; i < 4; i++) {
+				frames.push(PIXI.Texture.fromFrame("breaking_" + i + ".png"));
+			}
+			this.breakingAnim.updateAnimation([frames, false], 0.05 / this.breakTime);
+			this.breakingAnim.pos = this.physics.pos;
+			this.breakingAnim.updatePos(camera);
+			this.breakingAnim.stageToScene(mapScene);
+		}
 	}
 
 	set id(nid) {
 		var oldid = this._id;
 		this._id = nid;
 		if(nid != oldid) {
+			if(this.breakingAnim) {
+				this.breakingAnim.unstageFromScene(mapScene);
+				this.breakingAnim = undefined;
+			}
 			this.graphics.sprite.texture = PIXI.Texture.fromFrame('sprite_0' + this._id + '.png');
 			if(nid >= 1 && oldid == 0) {
 				this.solid = true;
 				this.graphics.stageToScene(this.scene);
+				this.breakable = true;
+				this.breakTime = (this._id % 2 ? 2 : 4);
 			}
 			else {
 				this.graphics.unstageFromScene(this.scene);
+				this.breakable = false;
+				this.breakTime = 0;
 			}
 		}
 	}
@@ -593,6 +671,7 @@ class GameMap {
 				this.map[i].push(new Chunk(new Vector2(i, j)));
 			}
 		}
+		this.updateQueue = [];
 	}
 
 	generateMap() {
@@ -636,6 +715,10 @@ class GameMap {
 		this.getChunk(chunk.physics._pos.x, chunk.physics._pos.y).update(chunk);
 	}
 
+	updateBlock(i, j) {
+		this.updateQueue.push([i, j]);
+	}
+
 	update() {
 		this.map.forEach(function(row, i, arr) {
 			row.forEach(function(item, j, rarr) {
@@ -658,6 +741,15 @@ function setup() {
 	mapScene = new PIXI.Container();
 	objects = new PIXI.Container();
 	backgroundSprite = new PIXI.Sprite(Resources[backgroundImage].texture);
+	selectBorder = new GraphicsPrimitive();
+	selectBorder.initSprite('selectBorder.png');
+	selectBorder.screenPos = new Vector2(-100, -100);
+	selectBorder.updateScreenPos = function() {
+		selectBorder.pos = selectBorder.screenPos.div(new Vector2(gScale, gScale)).add(camera);
+		selectBorder.pos.x = Math.floor(selectBorder.pos.x / CellSize.x) * CellSize.x;
+		selectBorder.pos.y = Math.floor(selectBorder.pos.y / CellSize.y) * CellSize.y;
+		selectBorder.updatePos(camera);	
+	};
 
 	loadAnimation();
 	gameScene.scale.set(gScale, gScale);
@@ -674,6 +766,7 @@ function setup() {
 
 	map = new GameMap();
 	
+	selectBorder.stageToScene(gameScene);
 	frame();
 }
 
@@ -746,6 +839,9 @@ function frame() {
 	if(isGameActive) {
 		map.update();
 	}
+	if(selectBorder.screenPos){ 
+		selectBorder.updateScreenPos();
+	}
 	backgroundSprite.scale.set(Math.max(window.innerWidth / 1920, window.innerHeight / 1080), Math.max(window.innerWidth / 1920, window.innerHeight / 1080));
 	renderer.resize(window.innerWidth, window.innerHeight - 1);
 	renderer.render(screenStage);
@@ -796,6 +892,15 @@ function mouseDown(event, canvas) {
 		var pos = new Vector2();
 		pos.x = event.pageX - canvas.offsetLeft;
 		pos.y = event.pageY - canvas.offsetTop;
-		socket.emit("mouse", pos.div(new Vector2(gScale, gScale)).add(camera), token);
+		socket.emit("mouse", pos.div(new Vector2(gScale, gScale)).add(camera), event.button, token);
+	}
+}
+
+function mouseMoved(event, canvas) {
+	if(isGameActive) {
+		var pos = new Vector2();
+		pos.x = event.pageX - canvas.offsetLeft;
+		pos.y = event.pageY - canvas.offsetTop;
+		selectBorder.screenPos = pos;
 	}
 }

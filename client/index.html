@@ -1,28 +1,47 @@
 <html>
-	<head>
-        <meta charset="UTF-8" />
-		<title>
-			Infected
-		</title>
-		<link rel="stylesheet" type="text/css" href="css/styles.css">
-		<script type="text/javascript" src="libs/pixi.js"></script>
-		<script type="text/javascript" src="libs/socket.io.js"></script>
-		<script type="text/javascript" src="libs/papaparse.js"></script>
-	</head>
-	<body>
-		<script type="text/javascript" src="src/client.js"></script>
-		<script type="text/javascript" src="src/game.js"></script>
-		<canvas id="game" width="500" height="500" onmousedown="mouseDown(event, this)"></canvas>
-		<div id="nicknameForm">
-			<input type="text" name="nickname" hint="Nickname" size="20" onkeydown="if (event.keyCode == 13) play()">
-			<br>
-			<button type="button" name="playBtn" id="playBtn" onclick="play()">Play!</button>
-			<div id="errorText">
 
-			</div>
+<head>
+	<meta charset="UTF-8" />
+	<title>
+		Infected
+	</title>
+	<link rel="stylesheet" type="text/css" href="css/styles.css">
+	<link rel="icon" type="image/png" href="favicon.png">
+	<script type="text/javascript" src="libs/pixi.js"></script>
+	<script type="text/javascript" src="libs/socket.io.js"></script>
+	<script type="text/javascript" src="libs/Queue.js"></script>
+</head>
+
+<body>
+	<script type="text/javascript" src="src/client.js"></script>
+	<script type="text/javascript" src="src/game.js"></script>
+	<canvas id="game" width="500" height="500" onmousedown="mouseDown(event, this)" onmousemove="mouseMoved(event, this)" oncontextmenu="event.preventDefault()"></canvas>
+	<div id="nicknameForm">
+		<input type="text" name="nickname" hint="Nickname" size="20" onkeydown="if (event.keyCode == 13) play()">
+		<br>
+		<button type="button" name="playBtn" id="playBtn" onclick="play()">Play!</button>
+		<div id="errorText">
 		</div>
-		<div id="loadingForm">
-			<progress value="0" max="100" id="mapLoadingProgress"></progress>
-		</div>
-	</body>
+	</div>
+	<div id="loadingForm">
+		<progress value="0" max="100" id="mapLoadingProgress"></progress>
+	</div>
+	<div id="inventory">
+		<table id="invTable">
+			<tr>
+				<td><img src="assets/gui/hammer.png"></td>
+				<td><img src="assets/gui/energy.png"></td>
+				<td><img src="assets/gui/stone.png"></td>
+				<td><img src="assets/gui/iron.png"></td>
+			</tr>
+			<tr>
+				<td align="center" id="workersVal">3</td>
+				<td align="center" id="energyVal">100</td>
+				<td align="center" id="stoneVal">100</td>
+				<td align="center" id="ironVal">100</td>
+			</tr>
+		</table>
+	</div>
+</body>
+
 </html>
