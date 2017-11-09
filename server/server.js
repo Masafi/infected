@@ -72,9 +72,12 @@ io.on('connection', function(socket) {
 			var tok = pl.network.makeToken();
 			usersNetwork.insert({'id': nid, 'socket': socket.id.toString(), 'token': tok});
 			socket.emit('reg-success', tok, nid, name);
-			map.emitMap(socket);
-			console.log(name +  " joined the game. Total: " + usersNetwork().count());
+			console.log(name +  " (" + nid + ") joined the game. Total: " + usersNetwork().count());
 		}
+	});
+
+	socket.on('requestChunk', function(i, j) {
+		map.emitChunk(i, j, socket);
 	});
 
 	socket.on('keyboard', function (key, state, token) {

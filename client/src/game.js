@@ -475,42 +475,6 @@ class Player {
 	set pos(npos) {
 		this.physics.pos = npos;
 	}
-
-	get workers() {
-		return this._workers;
-	}
-
-	set workers(val) {
-		this._workers = val;
-		document.getElementById('workersVal').innerHTML = '' + val;
-	}
-
-	get energy() {
-		return this._energy;
-	}
-
-	set energy(val) {
-		this._energy = val;
-		document.getElementById('energyVal').innerHTML = '' + Math.floor(val);
-	}
-
-	get stone() {
-		return this._stone;
-	}
-
-	set stone(val) {
-		this._stone = val;
-		document.getElementById('stoneVal').innerHTML = '' + Math.floor(val);
-	}
-
-	get iron() {
-		return this._iron;
-	}
-
-	set iron(val) {
-		this._iron = val;
-		document.getElementById('ironVal').innerHTML = '' + Math.floor(val);
-	}
 }
 
 class Block {
@@ -603,6 +567,7 @@ class Chunk {
 				this.chunk[i][j].physics.rpos = new Vector2(i, j).add(this.physics.pos);
 			}
 		}
+		this.delivered = false;
 	}
 
 	getStaticObj(arr) {
@@ -619,6 +584,7 @@ class Chunk {
 		var self = this;
 		var curUpdate = this.updateRender();
 		if(curUpdate || this.prevUpdate || data) {
+			this.delivered = true;
 			this.prevUpdate = curUpdate;
 			this.chunk.forEach(function(row, i, arr) {
 				row.forEach(function(item, j, rarr) {
@@ -635,15 +601,14 @@ class Chunk {
 
 	updateRender() {
 		if(players.has(myId)) {
-			var dist = Math.max(Math.min(Math.abs(this.physics.pos.x - players.get(myId).physics.rpos.x), 
-										 Math.abs(this.physics.pos.x + chunkSize - players.get(myId).physics.rpos.x)), 
-								Math.min(Math.abs(this.physics.pos.y - players.get(myId).physics.rpos.y), 
-										 Math.abs(this.physics.pos.y + chunkSize - players.get(myId).physics.rpos.y))); 
-			var dist2 = Math.max(Math.min(Math.abs(this.physics.pos.x - (camera.x + window.innerWidth / gScale / 2) / CellSize.x), 
+			var dist = Math.max(Math.min(Math.abs(this.physics.pos.x - (camera.x + window.innerWidth / gScale / 2) / CellSize.x), 
 										 Math.abs(this.physics.pos.x + chunkSize - (camera.x + window.innerWidth / gScale / 2) / CellSize.x)), 
 								Math.min(Math.abs(this.physics.pos.y - (camera.y + window.innerHeight / gScale / 2) / CellSize.y), 
 										 Math.abs(this.physics.pos.y + chunkSize - (camera.y + window.innerHeight / gScale / 2) / CellSize.y))); 
-			if(dist2 <= renderDistance) {
+			if(dist <= renderDistance) {
+				if(!this.delivered) {
+					socket.emit('requestChunk', this.physics.rpos.x, this.physics.rpos.y);
+				}
 				chunkScenes[this.physics.rpos.x][this.physics.rpos.y].visible = true;
 				return true;
 			}
@@ -796,7 +761,6 @@ function frame() {
 		fpstime += dt;
 		fps++;
 		if(fpstime >= 1) {
-			console.log(fps);
 			fps = 0;
 			fpstime = 0;
 		}
@@ -838,6 +802,13 @@ function frame() {
 	}
 	if(isGameActive) {
 		map.update();
+	}
+	if(isGameActive && players.has(myId)) {	
+		var pl = players.get(myId);
+		document.getElementById('workersVal').innerHTML = '' + Math.floor(pl.workers);
+		document.getElementById('energyVal').innerHTML = '' + Math.floor(pl.energy);
+		document.getElementById('stoneVal').innerHTML = '' + Math.floor(pl.stone);
+		document.getElementById('ironVal').innerHTML = '' + Math.floor(pl.iron);
 	}
 	if(selectBorder.screenPos){ 
 		selectBorder.updateScreenPos();

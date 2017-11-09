@@ -13,7 +13,7 @@ socket.on('reg-success', function(key, id, name) {
 	token = key;
 	myNick = name;
 	myId = id;
-	activateLoading();
+	activateGame();
 });
 
 socket.on('update', function(data) {
@@ -31,20 +31,11 @@ socket.on('reg-disconnect', function(id) {
 
 socket.on('map-chunk', function(chunk) {
 	map.updateChunk(chunk);
-	chunksGot++;
-	updateProgress();
 });
 
 socket.on('blockBreaking', function(pos) {
 	map.get(pos.x, pos.y).breakMe();
 });
-
-function updateProgress() {
-	document.getElementById('mapLoadingProgress').setAttribute('value', Math.floor(chunksGot * chunkSize * chunkSize / (mapSize.x * mapSize.y) * 100));
-	if(chunksGot >= Math.floor((mapSize.x * mapSize.y) / (chunkSize * chunkSize))) {
-		activateGame();
-	}
-}
 
 function activateLoading() {
 	document.getElementById('nicknameForm').style.display = 'none';
@@ -57,6 +48,7 @@ function play() {
 }
 
 function activateGame() {
+	document.getElementById('nicknameForm').style.display = 'none';
 	document.getElementById('loadingForm').style.display = 'none';
 	document.getElementById('inventory').style.display = 'inline';
 	isGameActive = 1;
