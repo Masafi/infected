@@ -86,14 +86,15 @@ var myNick = undefined;
 var myId = undefined;
 var camera = new Vector2(0, 0);
 var CellSize = new Vector2(16, 16);
-var lastTickTime = new Date().getTime();
 var dataUpdated = false;
 const eps = 1e-6;
 const chunkSize = 8;
 var mapSize = new Vector2(512, 128);
+var lastTickTime = new Date().getTime();
 var renderDistance = 30;
 var playerAnimations = [];
 var selectBorder = undefined;
+var isGameLoaded = false;
 
 class GraphicsPrimitive {
 	constructor() {
@@ -268,18 +269,23 @@ class Block {
 	constructor(scene) {
 		this.physics = new PhysicPrimitive();
 		this.physics.size = new Vector2(0, 0).add(CellSize);
-		this._id = 0;
 		this.scene = scene;
 		this.graphics = new GraphicsPrimitive();
 		this.graphics.initSprite('sprite_00.png');
 		this.solid = false;
-		this.id = 0;
+		this._id = 0;
+		this.needBlock = false;
+		this.name = '';
+		this.energyCost = 0;
+		this.stoneCost = 0;
+		this.textureOffset = new Vector2(0, 0);
 
 		this.breakable = false;
 		this.isBreaking = false;
 		this.breakTime = 0;
 		this.breakTimer = 0;
 		this.breakingAnim = undefined;
+		this.id = 0;
 	}
 
 	update(data = undefined) {
@@ -287,11 +293,16 @@ class Block {
 			this.id = data._id;
 			this.physics.pos.x = data.physics._pos.x;
 			this.physics.pos.y = data.physics._pos.y;
-			if(this.id == 14) {
-				this.physics.pos = this.physics.pos.sub(new Vector2(129 / 2 - 1.5 * CellSize.x, 211 - CellSize.y));
-			}
+			this.solid = data.solid;
+			this.breakable = data.breakable;
+			this.breakTime = data.breakTime;
+			this.energyCost = data.energyCost;
+			this.stoneCost = data.stoneCost;
+			this.needBlock = data.needBlock;
+			this.name = data.name;
+			this.textureOffset = new Vector2(data.textureOffset.x, data.textureOffset.y);
 		}
-		this.graphics.pos = this.physics.pos;
+		this.graphics.pos = this.physics.pos.add(this.textureOffset);
 		this.graphics.updatePos(camera);
 		if(this.breakingAnim) {
 			this.breakingAnim.updatePos(camera);
@@ -308,38 +319,29 @@ class Block {
 				frames.push(PIXI.Texture.fromFrame("breaking_0" + i + ".png"));
 			}
 			if(this.breakTime) {
-				this.breakingAnim.updateAnimation([frames, false], 0.05 / this.breakTime);
+				this.breakingAnim.updateAnimation([frames, false], 0.06 / this.breakTime);
 				this.breakingAnim.pos = this.physics.pos;
 				this.breakingAnim.updatePos(camera);
-				this.breakingAnim.stageToScene(mapScene);
+				this.breakingAnim.stageToScene(this.scene);
 			}
 		}
 	}
 
 	set id(nid) {
-		var oldid = this._id;
-		this._id = nid;
-		if(nid != oldid) {
-			if(this.breakingAnim) {
-				this.breakingAnim.unstageFromScene(mapScene);
-				this.breakingAnim = undefined;
+		this.graphics.sprite.texture = PIXI.Texture.fromFrame('sprite_' + (nid < 10 ? '0' : '') + nid + '.png');
+		if(this._id != nid) {
+			if(this.breakingAnim && this.breakingAnim.sprite) {
+				this.breakingAnim.unstageFromScene(this.scene);
 			}
-			this.graphics.sprite.texture = PIXI.Texture.fromFrame('sprite_' + (this._id < 10 ? '0' : '') + this._id + '.png');
-			if(this._id >= 1 && this._id <= 4 || this._id >= 12 && this._id <= 13) {
-				this.breakTime = (this._id % 2 ? 2 : 4);
-				this.breakable = true;
-			}
-			else {
-				this.breakTime = 0;
-				this.breakable = false;
-			}
-			if(this._id != 0 && oldid == 0) {
-				this.graphics.stageToScene(this.scene);
-			}
-			if(this._id == 0) {
-				this.graphics.unstageFromScene(this.scene);
-			}
+			this.breakingAnim = undefined;
 		}
+		if(this._id == 0 && nid != 0) {
+			this.graphics.stageToScene(this.scene);
+		}
+		if(nid == 0) {
+			this.graphics.unstageFromScene(this.scene);
+		}
+		this._id = nid;
 	}
 
 	get id() {
@@ -392,7 +394,7 @@ class Chunk {
 										 Math.abs(this.physics.pos.y + chunkSize - (camera.y + window.innerHeight / gScale / 2) / CellSize.y))); 
 			if(dist <= renderDistance) {
 				if(!this.delivered) {
-					socket.emit('requestChunk', this.physics.rpos.x, this.physics.rpos.y);
+					socket.emit('requestChunk', this.physics.rpos.x, this.physics.rpos.y, token);
 				}
 				chunkScenes[this.physics.rpos.x][this.physics.rpos.y].visible = true;
 				return true;
@@ -509,6 +511,9 @@ function setup() {
 	map = new GameMap();
 	
 	selectBorder.stageToScene(gameScene);
+
+	isGameLoaded = 1;
+	enableGame();
 	frame();
 }
 
@@ -645,10 +650,16 @@ function mouseDown(event, canvas) {
 }
 
 function mouseMoved(event, canvas) {
-	if(isGameActive) {
+	if(isGameActive && isGameLoaded) {
 		var pos = new Vector2();
 		pos.x = event.pageX - canvas.offsetLeft;
 		pos.y = event.pageY - canvas.offsetTop;
 		selectBorder.screenPos = pos;
+	}
+}
+
+function enableGame() {
+	if(isGameActive && isGameLoaded) {
+		screenStage.addChild(gameScene);
 	}
 }

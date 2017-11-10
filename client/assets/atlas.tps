@@ -214,10 +214,6 @@
             <key type="filename">split/release/sprite_07.png</key>
             <key type="filename">split/release/sprite_08.png</key>
             <key type="filename">split/release/sprite_09.png</key>
-            <key type="filename">split/release/sprite_10.png</key>
-            <key type="filename">split/release/sprite_11.png</key>
-            <key type="filename">split/release/sprite_12.png</key>
-            <key type="filename">split/release/sprite_13.png</key>
             <struct type="IndividualSpriteSettings">
                 <key>pivotPoint</key>
                 <point_f>0.5,0.5</point_f>
@@ -230,7 +226,7 @@
                 <key>scale9FromFile</key>
                 <false/>
             </struct>
-            <key type="filename">split/release/sprite_14.png</key>
+            <key type="filename">split/release/sprite_10.png</key>
             <struct type="IndividualSpriteSettings">
                 <key>pivotPoint</key>
                 <point_f>0.5,0.5</point_f>
@@ -251,7 +247,6 @@
             <filename>split/release/breaking_02.png</filename>
             <filename>split/release/breaking_03.png</filename>
             <filename>split/release/selectBorder.png</filename>
-            <filename>split/release/sprite_00.png</filename>
             <filename>split/release/sprite_01.png</filename>
             <filename>split/release/sprite_02.png</filename>
             <filename>split/release/sprite_03.png</filename>
@@ -262,10 +257,7 @@
             <filename>split/release/sprite_08.png</filename>
             <filename>split/release/sprite_09.png</filename>
             <filename>split/release/sprite_10.png</filename>
-            <filename>split/release/sprite_11.png</filename>
-            <filename>split/release/sprite_12.png</filename>
-            <filename>split/release/sprite_13.png</filename>
-            <filename>split/release/sprite_14.png</filename>
+            <filename>split/release/sprite_00.png</filename>
         </array>
         <key>ignoreFileList</key>
         <array/>

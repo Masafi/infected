@@ -10,6 +10,7 @@ var jwt = require('jsonwebtoken');
 var jwtSecretKey = "supersecrettodochange";
 var taffy = require('taffydb');
 var fs = require('fs');
+var csvParse = require('csv-parse');
 
 //HTTP server
 var port = process.env.PORT || 80;
@@ -23,6 +24,8 @@ var usersNetwork = taffy.taffy();
 var ids = [];
 var players = [];
 var socketid = new Map();
+var blockInfo = [];
+var leftPlayers = new Map();
 
 ///Sockets behavior
 io.on('connection', function(socket) {
@@ -31,28 +34,23 @@ io.on('connection', function(socket) {
 	socket.emit('requestToken');
 
 	socket.on('returnToken', function (token) {
-		var good = 1;
-		if(token) {
-			jwt.verify(token, function (err, decoded) {
-				if(err) {
-					good = 0;	
-				}
-			});
-		}
-		else {
-			good = 0;
-			return;
-		}
+		var good = verifyToken(token);
 		if(good) {
 			var usr = usersNetwork({'token': token});
 			good = usr.count() > 0;
 		}
+		else {
+			socket.emit('reg-error', "Token extension error");
+		}
 		if(good) {
 			socket.join('users');
 			usersNetwork({'token': token}).update({'socket': socket.id.toString()});
+			var id = leftPlayers.get(token);
+			players[id].network.left = false;
+			socket.emit('reg-success', token, id, players[id].network.nickname);
 		}
 		else {
-			socket.emit('reg-error', "Token extension error");
+
 		}
 	});
 
@@ -76,13 +74,21 @@ io.on('connection', function(socket) {
 		}
 	});
 
-	socket.on('requestChunk', function(i, j) {
-		map.emitChunk(i, j, socket);
+	socket.on('requestChunk', function(i, j, token) {
+		if(verifyToken(token)) {
+			map.emitChunk(i, j, socket);
+		}
+		else {
+			socket.emit('reg-error', "Token extension error");
+		}
 	});
 
 	socket.on('keyboard', function (key, state, token) {
 		if(verifyToken(token)) {
 			players[usersNetwork({'token': token}).first().id].keys[key] = state;
+		}
+		else {
+			socket.emit('reg-error', "Token extension error");
 		}
 	});
 
@@ -92,21 +98,20 @@ io.on('connection', function(socket) {
 			players[usersNetwork({'token': token}).first().id].mouseUpdated = true;
 			players[usersNetwork({'token': token}).first().id].mouseButton = button;
 		}
+		else {
+			socket.emit('reg-error', "Token extension error");
+		}
 	});
 
 	socket.on('disconnect', function() {
 		console.log(socket.id.toString() + " disconnected, total: " + io.engine.clientsCount);
 		if(usersNetwork({'socket': socket.id.toString()}).count() > 0) {
 			var usr = usersNetwork({'socket': socket.id.toString()}).first();
-			var name = players[usr.id].network.nickname;
 			var id = usr.id;
-			ids[id] = false;
-			players[id] = undefined;
-			io.to('users').emit('reg-disconnect', id);
-			usersNetwork({'socket': socket.id.toString()}).remove();
-			console.log(name + " left the game. Total: " + usersNetwork().count());
+			leftPlayers.set(usr.token, id);
+			players[id].network.left = true;
+			console.log(players[id].network.nickname + " left the game. Total: " + usersNetwork().count());
 		}
-		socketid.delete(socket.id.toString());
 	});
 });
 
@@ -204,6 +209,7 @@ class NetworkPrimitive {
 		this.id = -1;
 		this.socket = undefined;
 		this.token = undefined;
+		this.left = false;
 	}
 
 	makeToken() {
@@ -211,7 +217,7 @@ class NetworkPrimitive {
 		profile.nick = this.nickname;
 		profile.sid = this.socket;
 		profile.id = this.id;
-		this.token = jwt.sign(profile, jwtSecretKey, { expiresIn: "24h" });
+		this.token = jwt.sign(profile, jwtSecretKey, { expiresIn: "1h" });
 		return this.token;
 	}
 }
@@ -459,17 +465,18 @@ class Player {
 			rpos.y = Math.floor(rpos.y);
 			if(this.mouseButton == 0) {
 				if(map.checkCoords(rpos.x, rpos.y) && this.workers >= 1) {
-					if(!map.get(rpos.x, rpos.y).standsOwn || this.energy >= 10) { 
-						if(map.get(rpos.x, rpos.y).breakMe()) {
+					var block = map.get(rpos.x, rpos.y);
+					if(block.needBlock || this.energy >= block.energyCost) { 
+						if(block.breakMe()) {
 							this.workers--;
-							if(map.get(rpos.x, rpos.y).standsOwn) this.energy -= 10;
+							if(!block.needBlock) this.energy -= block.energyCost;
 							map.updateBlock(rpos.x, rpos.y, [this.id]);
 						}
 					}
 				}
 			}
 			else if(this.mouseButton == 2) {
-				if(map.checkCoords(rpos.x, rpos.y) && this.workers >= 1 && this.energy >= 5 && this.stone >= 10) {
+				if(map.checkCoords(rpos.x, rpos.y) && this.workers >= 1 && this.energy >= 5 && this.stone >= 5) {
 					var block = map.get(Math.floor(rpos.x), Math.floor(rpos.y));
 					var good = true;
 					players.forEach(function(item, i, arr) {
@@ -478,9 +485,9 @@ class Player {
 						}
 					});
 					if(good && block.id == 0) {
-						block.id = 3;
+						block.id = 2;
 						this.energy -= 5;
-						this.stone -= 10;
+						this.stone -= 5;
 						var chunkid = map.getChunkID(Math.floor(rpos.x), Math.floor(rpos.y));
 						map.emitChunk(chunkid.x, chunkid.y);
 					}
@@ -539,7 +546,11 @@ class Block {
 		this.physics.size = new Vector2(0, 0).add(CellSize);
 		this.id = 0;
 		this.solid = false;
-		this.standsOwn = false;
+		this.needBlock = false;
+		this.name = '';
+		this.energyCost = 0;
+		this.stoneCost = 0;
+		this.textureOffset = new Vector2(0, 0);
 
 		this.breakable = false;
 		this.isBreaking = false;
@@ -572,21 +583,15 @@ class Block {
 
 	set id(nid) {
 		this._id = nid;
-		if(this._id >= 1 && this._id <= 4 || this._id >= 12 && this._id <= 13) {
-			this.solid = true;
-			this.breakable = true;
-			this.breakTime = (this._id % 2 ? 2 : 4);
-			this.standsOwn = true;
-		}
-		else {
-			this.solid = false;
-			this.breakable = false;
-			this.breakTime = 0;
-			this.standsOwn = false;
-		}
-		if(this._id >= 5 && this._id <= 11 || this._id == 14) {
-			this.breakable = true;
-		}
+		var info = blockInfo[nid];
+		this.solid = info.solid;
+		this.breakable = info.breakable;
+		this.breakTime = info.breakTime;
+		this.energyCost = info.energyCost;
+		this.stoneCost = info.stoneCost;
+		this.needBlock = info.needBlock;
+		this.name = info.name;
+		this.textureOffset = info.textureOffset;
 	}
 
 	get id() {
@@ -710,11 +715,11 @@ class GameMap {
 		for(let i = 0; i < mapSize.x; i++) {
 			for(let j = 0; j < maxHeight + 1; j++) {
 				if(height[i] >= maxHeight - j) {
-					if(Math.random() * 100 < 20) {
+					if(Math.random() * 100 < 50) {
 						var flower = Math.min(5, Math.floor(Math.random() * 6));
-						this.get(i, j - 1 + yOffset).id = 5 + flower;
+						this.get(i, j - 1 + yOffset).id = 4 + flower;
 					}
-					this.get(i, j + yOffset).id = 13;
+					this.get(i, j + yOffset).id = 1;
 					this.get(i, j + 1 + yOffset).id = 2;
 					this.get(i, j + 2 + yOffset).id = 2;
 					var curRand = Math.random() * 10;
@@ -729,18 +734,13 @@ class GameMap {
 			}
 			for(let j = 1; j < maxHeight + 2 + yOffset; j++) {
 				if(this.get(i, j - 1).id >= 1 && this.get(i, j).id == 0) {
-					this.get(i, j).id = 2;
+					this.get(i, j).id = 3;
 				}
 			}
 			for(let j = maxHeight + 2 + yOffset; j < mapSize.y; j++) {
 				var curNoise = perlinNoise.noise(i / 10, j / 10, seed) * 100;
 				if(curNoise <= Math.max(60, 100 - j)) {
-					if(Math.random() * 100 <= 1) {
-						this.get(i, j).id = 4;
-					}
-					else {
-						this.get(i, j).id = 2;
-					}
+					this.get(i, j).id = 3;
 				}
 			}
 		}
@@ -748,10 +748,10 @@ class GameMap {
 		for(let i = 0; i < mapSize.x; i++) {
 			if(this.checkCoords(i - 1, 0) && this.checkCoords(i + 1, 0)) {
 				for(let j = yOffset; j < mapSize.y; j++) {
-					if(this.get(i, j).id == 13) {
-						if(this.get(i - 1, j).id == 13 && this.get(i + 1, j).id == 13) {
+					if(this.get(i, j).id == 1) {
+						if(this.get(i - 1, j).id == 1 && this.get(i + 1, j).id == 1) {
 							if(Math.random() * 250 <= withoutTree) {
-								this.get(i, j - 1).id = 14;
+								this.get(i, j - 1).id = 10;
 								withoutTree = -2;
 							}
 						}
@@ -767,7 +767,7 @@ class GameMap {
 				}
 				var count = check(i - 1, j) || check(i + 1, j) || check(i, j - 1) || check(i, j + 1);
 				if(count && this.get(i, j).id != 0) {
-					this.get(i, j).id = 3;
+					this.get(i, j).id = 2;
 				}
 			}
 		}
@@ -819,7 +819,9 @@ class GameMap {
 		var nq = [];
 		var self = this;
 		this.updateQueue.forEach(function(item, i, arr) {
-			var res = self.get(item[0], item[1]).update(dt);
+			var block = self.get(item[0], item[1]);
+			var stoneCost = block.stoneCost;
+			var res = block.update(dt);
 			if(res[0]) {
 				nq.push(item);
 			}
@@ -827,13 +829,16 @@ class GameMap {
 				var pl = players[item[2][0]];
 				if(pl) {
 					pl.workers++;
-					if(self.get(item[0], item[1]).standsOwn) pl.stone += 10;
+					pl.stone += stoneCost;
 				}
 			}
 			if(res[1]) {
-				if(self.checkCoords(item[0], item[1] - 1) && !self.get(item[0], item[1] - 1).standsOwn) {
+				if(self.checkCoords(item[0], item[1] - 1) && self.get(item[0], item[1] - 1).needBlock) {
 					self.get(item[0], item[1] - 1).breakMe();
-					pl.workers--;
+					var pl = players[item[2][0]];
+					if(pl) {
+						pl.workers--;
+					}
 					nq.push([item[0], item[1] - 1, item[2]]);
 				}
 				var chunkid = self.getChunkID(item[0], item[1]);
@@ -844,19 +849,44 @@ class GameMap {
 	}
 }
 
-var Wrapper = {
-
-}
-
-var map = new GameMap();
+var map = undefined;
 
 function setup() {
+	map = new GameMap();
 	map.generateMap();
 	setInterval(tick, 16);
 	console.log("Server started successfully");
 }
 
-setup();
+function loadFiles() {
+	fs.readFile('server/res/blockInfo.csv', 'utf8', function(err, data) {
+		if(err) {
+			console.log("Error reading blockInfo file", err);
+		}
+		csvParse(data, {delimiter: ';'}, function(errr, output) {
+			if(errr) {
+				console.log("Error reading blockInfo file #2", errr);
+			}
+			for(let i = 1; i < output.length; i++) {
+				var info = {};
+				var cur = output[i];
+				info.id = Number(cur[0]);
+				info.solid = Number(cur[1]);
+				info.breakable = Number(cur[2]);
+				info.breakTime = Number(cur[3]);
+				info.energyCost = Number(cur[4]);
+				info.stoneCost = Number(cur[5]);
+				info.needBlock = Number(cur[6]);
+				info.name = cur[7];
+				info.textureOffset = new Vector2(Number(cur[8]), Number(cur[9]));
+				blockInfo.push(info);
+			}
+			setup();
+		});
+	});
+}
+
+loadFiles();
 
 function tick() {
 	var curTime = new Date().getTime();
@@ -867,7 +897,7 @@ function tick() {
 	}
 	var data = [];
 	players.forEach(function (player, i, arr) {
-		if(player == undefined) return;
+		if(player == undefined || player.network.left) return;
 		//Processing physics
 		player.tickUpdate(dt);
 
