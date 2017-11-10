@@ -888,10 +888,20 @@ function loadFiles() {
 
 loadFiles();
 
+var fpsTime = 0;
+var fps = 0;
+
 function tick() {
 	var curTime = new Date().getTime();
 	var dt = (curTime - lastTickTime) / 1000;
 	lastTickTime = curTime;
+	fpsTime += dt;
+	fps++;
+	if(fpsTime >= 1) {
+		console.log(Math.floor(fps / fpsTime));
+		fps = 0;
+		fpsTime = 0;
+	}
 	if(dt >= 0.5) {
 		return;
 	}
