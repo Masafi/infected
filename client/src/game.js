@@ -140,185 +140,6 @@ class PhysicPrimitive {
 		this.g = 1000;
 	}
 
-	updateSpeed(dt) {
-		return this.vel.add(this.acc.mula(dt)).max(this.mxvel.neg()).min(this.mxvel);
-	}
-
-	updatePosition(vel, dt) {
-		return this.pos.add(vel.mula(dt));
-	}
-
-	collision(that, dt) {
-		var relv = this.vel.sub(that.vel);
-		var bigBox = new PhysicPrimitive();
-		bigBox.pos = this.pos.min(this.updatePosition(relv, dt));
-		bigBox.size = this.pos.max(this.updatePosition(relv, dt)).add(this.size).sub(bigBox.pos);
-		if (bigBox.intersectsWithBorders(that)) {
-			var invEntry = new Vector2(0, 0);
-			var invExit = new Vector2(0, 0);
-			if (relv.x >= 0) {
-				invEntry.x = that.pos.x - (this.pos.x + this.size.x);
-				invExit.x = (that.pos.x + that.size.x) - this.pos.x;
-			} else {
-				invEntry.x = (that.pos.x + that.size.x) - this.pos.x;
-				invExit.x = that.pos.x - (this.pos.x + this.size.x);
-			}
-			if (relv.y >= 0) {
-				invEntry.y = that.pos.y - (this.pos.y + this.size.y);
-				invExit.y = (that.pos.y + that.size.y) - this.pos.y;
-			} else {
-				invEntry.y = (that.pos.y + that.size.y) - this.pos.y;
-				invExit.y = that.pos.y - (this.pos.y + this.size.y);
-			}
-			var entry = new Vector2(0, 0);
-			var exit = new Vector2(0, 0);
-			if (relv.x == 0) {
-				entry.x = (invEntry.x > 0 ? 1 : -1) * (dt + 1);
-				exit.x = (invExit.x > 0 ? 1 : -1) * (dt + 1);
-			} else {
-				entry.x = invEntry.x / relv.x;
-				exit.x = invExit.x / relv.x;
-			}
-			if (relv.y == 0) {
-				entry.y = (invEntry.y > 0 ? 1 : -1) * (dt + 1);
-				exit.y = (invExit.y > 0 ? 1 : -1) * (dt + 1);
-			} else {
-				entry.y = invEntry.y / relv.y;
-				exit.y = invExit.y / relv.y;
-			}
-			var entryTime = Math.max(entry.x, entry.y);
-			var exitTime = Math.min(exit.x, exit.y);
-			var normal = new Vector2(0, 0);
-			if (entryTime > exitTime || entry.x < -eps && entry.y < -eps || entry.x - dt > eps || entry.y - dt > eps) {
-				return [dt + 1, normal];
-			} else {
-				if (entry.x - eps > entry.y) {
-					if (relv.x >= 0) {
-						normal = new Vector2(-1, 0);
-					} else {
-						normal = new Vector2(1, 0);
-					}
-				} else {
-					if (relv.y >= 0) {
-						normal = new Vector2(0, -1);
-					} else {
-						normal = new Vector2(0, 1);
-					}
-				}
-				return [entryTime, normal];
-			}
-		}
-		else {
-			return [dt + 1, new Vector2(0, 0)];
-		}
-	}
-
-	intersects(that) {
-		return  (this.pos.x > that.pos.x && this.pos.x < that.pos.x + that.size.x ||
-				this.pos.x + this.size.x > that.pos.x && this.pos.x + this.size.x < that.pos.x + that.size.x) &&
-				(this.pos.y > that.pos.y && this.pos.y < that.pos.y + that.size.y ||
-				this.pos.y + this.size.y > that.pos.y && this.pos.y + this.size.y < that.pos.y + that.size.y) ||
-				(that.pos.x > this.pos.x && that.pos.x < this.pos.x + this.size.x ||
-				that.pos.x + that.size.x > this.pos.x && that.pos.x + that.size.x < this.pos.x + this.size.x) &&
-				(that.pos.y > this.pos.y && that.pos.y < this.pos.y + this.size.y ||
-				that.pos.y + that.size.y > this.pos.y && that.pos.y + that.size.y < this.pos.y + this.size.y);
-	}
-
-	intersectsWithBorders(that) {
-		return  (this.pos.x >= that.pos.x && this.pos.x <= that.pos.x + that.size.x ||
-				this.pos.x + this.size.x >= that.pos.x && this.pos.x + this.size.x <= that.pos.x + that.size.x) &&
-				(this.pos.y >= that.pos.y && this.pos.y <= that.pos.y + that.size.y ||
-				this.pos.y + this.size.y >= that.pos.y && this.pos.y + this.size.y <= that.pos.y + that.size.y) ||
-				(that.pos.x >= this.pos.x && that.pos.x <= this.pos.x + this.size.x ||
-				that.pos.x + that.size.x >= this.pos.x && that.pos.x + that.size.x <= this.pos.x + this.size.x) &&
-				(that.pos.y >= this.pos.y && that.pos.y <= this.pos.y + this.size.y ||
-				that.pos.y + that.size.y >= this.pos.y && that.pos.y + that.size.y <= this.pos.y + this.size.y);
-	}
-
-	resolveIntersection(that) {
-		if(this.intersectsWithBorders(that)) {
-			var leastProj = new Vector2(this.pos.x + this.size.x - that.pos.x, this.pos.y + this.size.y - that.pos.y);
-			var greatProj = new Vector2(that.pos.x + that.size.x - this.pos.x, that.pos.y + that.size.y - this.pos.y);
-			var mxVal = Math.max(Math.max(Math.max(leastProj.x, leastProj.y), greatProj.x), greatProj.y);
-			//console.log([leastProj, greatProj]);
-			if(leastProj.x < 0) leastProj.x = mxVal + 1;
-			if(leastProj.y < 0) leastProj.y = mxVal + 1;
-			if(greatProj.x < 0) greatProj.x = mxVal + 1;
-			if(greatProj.y < 0) greatProj.y = mxVal + 1;
-			var mnVal = Math.min(Math.min(Math.min(leastProj.x, leastProj.y), greatProj.x), greatProj.y);
-			if(mnVal == mxVal + 1) {
-				return;
-			}
-			if(leastProj.x == mnVal) {
-				this.pos.x -= leastProj.x;
-			}
-			else if(leastProj.y == mnVal) {
-				this.pos.y -= leastProj.y;
-			}
-			else if(greatProj.x == mnVal) {
-				this.pos.x += greatProj.x;
-			}
-			else if(greatProj.y == mnVal){
-				this.pos.y += greatProj.y;
-			}
-		}
-	}
-
-	resolveCollision(objects, dt) {
-		var collisionDataEnd = [dt + 1, new Vector2(0, 0)];
-		var self = this;
-		
-		objects.forEach(function(plObj, i, arr) {
-			var platform = plObj;
-			if(platform.pos == undefined) {
-				platform = plObj.physics;	
-			}
-			self.resolveIntersection(platform);
-			var collisionData = self.collision(platform, dt);
-			if(collisionData[0] <= collisionDataEnd[0]) {
-				collisionDataEnd = collisionData;
-			}
-		});
-
-		if(collisionDataEnd[0] >= -eps && collisionDataEnd[0] <= dt) {
-			if(collisionDataEnd[0] <= eps) collisionDataEnd[0] = 0;
-			self.standing = collisionDataEnd[1].y == -1;
-			self.pos = self.updatePosition(self.vel, collisionDataEnd[0] - 0.000000001);
-			var temp = new Vector2(collisionDataEnd[1].y, collisionDataEnd[1].x); 
-			self.vel = self.vel.mul(temp.mul(temp));
-			var timeLeft = dt - collisionDataEnd[0];
-			var collisionDataFirst = [dt - collisionDataEnd[0], new Vector2(0, 0).add(collisionDataEnd[1])];
-			collisionDataEnd[0] = collisionDataFirst[0] + 1;
-			var iid = -1;
-			objects.forEach(function(plObj, i, arr) {
-				var platform = plObj;
-				if(platform.pos == undefined) {
-					platform = plObj.physics;	
-				}
-				self.resolveIntersection(platform);
-				var collisionData = self.collision(platform, collisionDataEnd[0]);
-				if(collisionData[0] <= collisionDataEnd[0] && collisionData[1].x * collisionDataFirst[1].x == 0 && collisionData[1].y * collisionDataFirst[1].y == 0) {
-					collisionDataEnd = collisionData;
-					iid = i;
-				}
-			});
-
-			if(collisionDataEnd[0] >= -eps && collisionDataEnd[0] <= collisionDataFirst[0]) {
-				if(collisionDataEnd[0] <= eps) collisionDataEnd[0] = 0;
-				self.collision(objects[iid], dt, true);
-				self.standing = self.standing || collisionDataEnd[1].y == -1;
-				self.pos = self.updatePosition(self.vel, collisionDataEnd[0]);
-				self.vel = new Vector2(0, 0);
-			}
-			else {
-				self.pos = self.updatePosition(self.vel, timeLeft);	
-			}
-		}
-		else {
-			self.pos = self.updatePosition(self.vel, dt);	
-		}
-	}
-
 	set pos(npos) {
 		this._pos = npos;
 		this._rpos = npos.div(this.rscale);
@@ -434,40 +255,6 @@ class Player {
 		this.nameSprite.updatePos(camera);
 	}
 
-	processKeys(keys) {
-		if (keys['a']) {
-			this.physics.vel.x = -200;
-		}
-		else if (keys['d']) {
-			this.physics.vel.x = 200;
-		}
-		else {
-			this.physics.vel.x = 0;
-		}
-
-		if (keys['w'] && this.physics.standing) {
-			this.physics.vel.y = -500;
-		}
-	}
-
-	tickUpdate(dt) {
-		//Pre update
-		this.processKeys(myKeys);
-		this.physics.vel = this.physics.updateSpeed(dt);
-		this.physics.standing = false;
-		
-		//Collision
-		var collisionObjects = [];
-		map.forEach(function(row, i, arr) {
-			row.forEach(function(item, j, rarr) {
-				if(item.solid) {
-					collisionObjects.push(item.physics);
-				}
-			});
-		});
-		this.physics.resolveCollision(collisionObjects, dt);
-	}
-
 	get pos() {
 		return this.physics.pos;
 	}
@@ -484,7 +271,7 @@ class Block {
 		this._id = 0;
 		this.scene = scene;
 		this.graphics = new GraphicsPrimitive();
-		this.graphics.initSprite('sprite_0' + this._id + '.png');
+		this.graphics.initSprite('sprite_00.png');
 		this.solid = false;
 		this.id = 0;
 
@@ -500,6 +287,9 @@ class Block {
 			this.id = data._id;
 			this.physics.pos.x = data.physics._pos.x;
 			this.physics.pos.y = data.physics._pos.y;
+			if(this.id == 14) {
+				this.physics.pos = this.physics.pos.sub(new Vector2(129 / 2 - 1.5 * CellSize.x, 211 - CellSize.y));
+			}
 		}
 		this.graphics.pos = this.physics.pos;
 		this.graphics.updatePos(camera);
@@ -515,12 +305,14 @@ class Block {
 			this.breakingAnim = new GraphicsPrimitive();
 			var frames = [];
 			for(let i = 0; i < 4; i++) {
-				frames.push(PIXI.Texture.fromFrame("breaking_" + i + ".png"));
+				frames.push(PIXI.Texture.fromFrame("breaking_0" + i + ".png"));
 			}
-			this.breakingAnim.updateAnimation([frames, false], 0.05 / this.breakTime);
-			this.breakingAnim.pos = this.physics.pos;
-			this.breakingAnim.updatePos(camera);
-			this.breakingAnim.stageToScene(mapScene);
+			if(this.breakTime) {
+				this.breakingAnim.updateAnimation([frames, false], 0.05 / this.breakTime);
+				this.breakingAnim.pos = this.physics.pos;
+				this.breakingAnim.updatePos(camera);
+				this.breakingAnim.stageToScene(mapScene);
+			}
 		}
 	}
 
@@ -532,17 +324,20 @@ class Block {
 				this.breakingAnim.unstageFromScene(mapScene);
 				this.breakingAnim = undefined;
 			}
-			this.graphics.sprite.texture = PIXI.Texture.fromFrame('sprite_0' + this._id + '.png');
-			if(nid >= 1 && oldid == 0) {
-				this.solid = true;
-				this.graphics.stageToScene(this.scene);
-				this.breakable = true;
+			this.graphics.sprite.texture = PIXI.Texture.fromFrame('sprite_' + (this._id < 10 ? '0' : '') + this._id + '.png');
+			if(this._id >= 1 && this._id <= 4 || this._id >= 12 && this._id <= 13) {
 				this.breakTime = (this._id % 2 ? 2 : 4);
+				this.breakable = true;
 			}
 			else {
-				this.graphics.unstageFromScene(this.scene);
-				this.breakable = false;
 				this.breakTime = 0;
+				this.breakable = false;
+			}
+			if(this._id != 0 && oldid == 0) {
+				this.graphics.stageToScene(this.scene);
+			}
+			if(this._id == 0) {
+				this.graphics.unstageFromScene(this.scene);
 			}
 		}
 	}
@@ -568,16 +363,6 @@ class Chunk {
 			}
 		}
 		this.delivered = false;
-	}
-
-	getStaticObj(arr) {
-		this.chunk.forEach(function(row, i, arr) {
-			row.forEach(function(block, j, rarr) {
-				if(block.static) {
-					arr.push(block);
-				}
-			});
-		});
 	}
 
 	update(data) {
@@ -613,6 +398,7 @@ class Chunk {
 				return true;
 			}
 			else {
+				this.delivered = false;
 				chunkScenes[this.physics.rpos.x][this.physics.rpos.y].visible = false;
 				return false;
 			}
@@ -639,27 +425,6 @@ class GameMap {
 		this.updateQueue = [];
 	}
 
-	generateMap() {
-		var height = [];
-		for(let i = 0; i < mapSize.x; i++) {
-			height.push(Math.floor(perlinNoise.noise(i / 3, 0.5, 0.5) * maxHeight + 1));
-		}
-		for(let i = 0; i < mapSize.x; i++) {
-			for(let j = 0; j < maxHeight; j++) {
-				if(height[i] >= maxHeight - j) {
-					this.get(i, j).id = 2;
-					this.get(i, j).id = 3;
-					this.get(i, j).id = 3;
-					this.get(i, j).id = 3;
-					break;
-				}
-			}
-			for(let j = 1; j < mapSize.y; j++) {
-				if(this.get(i, j).id >= 1 && this.get(i, j).id == 0) this.get(i, j).id = 1;
-			}
-		}
-	}
-
 	getChunk(i, j) {
 		return this.map[Math.floor(i / chunkSize)][Math.floor(j / chunkSize)];
 	}
@@ -682,6 +447,10 @@ class GameMap {
 
 	updateBlock(i, j) {
 		this.updateQueue.push([i, j]);
+	}
+
+	checkCoords(i, j) {
+		return i >= 0 && j >= 0 && i < mapSize.x && j < mapSize.y;
 	}
 
 	update() {
@@ -711,15 +480,23 @@ function setup() {
 	selectBorder.screenPos = new Vector2(-100, -100);
 	selectBorder.updateScreenPos = function() {
 		selectBorder.pos = selectBorder.screenPos.div(new Vector2(gScale, gScale)).add(camera);
-		selectBorder.pos.x = Math.floor(selectBorder.pos.x / CellSize.x) * CellSize.x;
-		selectBorder.pos.y = Math.floor(selectBorder.pos.y / CellSize.y) * CellSize.y;
-		selectBorder.updatePos(camera);	
+		var rpos = new Vector2();
+		rpos.x = Math.floor(selectBorder.pos.x / CellSize.x);
+		rpos.y = Math.floor(selectBorder.pos.y / CellSize.y);
+		selectBorder.pos = rpos.mul(CellSize);
+		selectBorder.updatePos(camera);
+		if(map.checkCoords(rpos.x, rpos.y) && map.get(rpos.x, rpos.y).id != 0) {
+			selectBorder.sprite.visible = true;
+		}
+		else {
+			selectBorder.sprite.visible = false;
+		}
 	};
 
 	loadAnimation();
 	gameScene.scale.set(gScale, gScale);
-	gameScene.addChild(objects);
 	gameScene.addChild(mapScene);
+	gameScene.addChild(objects);
 	screenStage.addChild(backgroundSprite);
 	for(let i = 0; i < mapSize.x / chunkSize; i++) {
 		chunkScenes.push([]);
@@ -800,7 +577,7 @@ function frame() {
 			i[1].update();
 		}
 	}
-	if(isGameActive) {
+	if(isGameActive && map) {
 		map.update();
 	}
 	if(isGameActive && players.has(myId)) {	

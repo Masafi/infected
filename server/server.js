@@ -243,7 +243,7 @@ class PhysicPrimitive {
 		var bigBox = new PhysicPrimitive();
 		bigBox.pos = this.pos.min(this.updatePosition(relv, dt));
 		bigBox.size = this.pos.max(this.updatePosition(relv, dt)).add(this.size).sub(bigBox.pos);
-		if (bigBox.intersectsWithBorders(that)) {
+		if (bigBox.intersects(that)) {
 			var invEntry = new Vector2(0, 0);
 			var invExit = new Vector2(0, 0);
 			if (relv.x >= 0) {
@@ -303,7 +303,7 @@ class PhysicPrimitive {
 		}
 	}
 
-	intersectsWithBorders(that) {
+	intersects(that) {
 		return   !(that.pos.x > this.pos.x + this.size.x
 				|| that.pos.x + that.size.x < this.pos.x
 				|| that.pos.y > this.pos.y + this.size.y
@@ -311,7 +311,7 @@ class PhysicPrimitive {
 	}
 
 	resolveIntersection(that) {
-		if(this.intersectsWithBorders(that)) {
+		if(this.intersects(that)) {
 			var leastProj = new Vector2(this.pos.x + this.size.x - that.pos.x, this.pos.y + this.size.y - that.pos.y);
 			var greatProj = new Vector2(that.pos.x + that.size.x - this.pos.x, that.pos.y + that.size.y - this.pos.y);
 			var mxVal = Math.max(Math.max(Math.max(leastProj.x, leastProj.y), greatProj.x), greatProj.y);
@@ -413,20 +413,17 @@ class PhysicPrimitive {
 	}
 }
 
-var debugMovement = false;
-
 class Player {
 	constructor(name, id, socket) {
 		this.keys = {};
 		this.id = id;
 
 		this.physics = new PhysicPrimitive();
-		this.physics.pos = new Vector2(500, 0);
+		this.physics.pos = new Vector2(((id + 1) * 1000) % (mapSize.x * CellSize.x), 0);
 		this.physics.size = new Vector2(15, 21);
 		this.physics.mxvel = new Vector2(400, 4000);
-		if(!debugMovement) this.physics.acc = new Vector2(0, this.physics.g);
-		else this.physics.acc = new Vector2(0, 0);
-
+		this.physics.acc = new Vector2(0, this.physics.g);
+		
 		this.network = new NetworkPrimitive();
 		this.network.nickname = name;
 		this.network.id = id;
@@ -452,31 +449,22 @@ class Player {
 			this.physics.vel.x = 0;
 		}
 
-		if(!debugMovement) {
-			if (this.keys['w'] && this.physics.standing) {
-				this.physics.vel.y = -400;
-			}
+		if (this.keys['w'] && this.physics.standing) {
+			this.physics.vel.y = -400;
 		}
-		else {
-			if (this.keys['w']) {
-				this.physics.vel.y = -200;
-			}
-			else if (this.keys['s']) {
-				this.physics.vel.y = 200;
-			}
-			else {
-				this.physics.vel.y = 0;
-			}
-		}
-
+		
 		if(this.mouseUpdated) {
 			var rpos = this.mousePos.div(CellSize);
+			rpos.x = Math.floor(rpos.x);
+			rpos.y = Math.floor(rpos.y);
 			if(this.mouseButton == 0) {
-				if(map.checkCoords(rpos.x, rpos.y) && this.workers >= 1 && this.energy >= 10) {
-					if(map.get(Math.floor(rpos.x), Math.floor(rpos.y)).breakMe()) {
-						this.workers--;
-						this.energy -= 10;
-						map.updateBlock(Math.floor(rpos.x), Math.floor(rpos.y), [this.id]);
+				if(map.checkCoords(rpos.x, rpos.y) && this.workers >= 1) {
+					if(!map.get(rpos.x, rpos.y).standsOwn || this.energy >= 10) { 
+						if(map.get(rpos.x, rpos.y).breakMe()) {
+							this.workers--;
+							if(map.get(rpos.x, rpos.y).standsOwn) this.energy -= 10;
+							map.updateBlock(rpos.x, rpos.y, [this.id]);
+						}
 					}
 				}
 			}
@@ -485,7 +473,7 @@ class Player {
 					var block = map.get(Math.floor(rpos.x), Math.floor(rpos.y));
 					var good = true;
 					players.forEach(function(item, i, arr) {
-						if(good && item.physics.intersectsWithBorders(block.physics)) {
+						if(good && item.physics.intersects(block.physics)) {
 							good = false;
 						}
 					});
@@ -551,6 +539,7 @@ class Block {
 		this.physics.size = new Vector2(0, 0).add(CellSize);
 		this.id = 0;
 		this.solid = false;
+		this.standsOwn = false;
 
 		this.breakable = false;
 		this.isBreaking = false;
@@ -583,15 +572,20 @@ class Block {
 
 	set id(nid) {
 		this._id = nid;
-		if(this._id >= 1) {
+		if(this._id >= 1 && this._id <= 4 || this._id >= 12 && this._id <= 13) {
 			this.solid = true;
 			this.breakable = true;
 			this.breakTime = (this._id % 2 ? 2 : 4);
+			this.standsOwn = true;
 		}
 		else {
 			this.solid = false;
 			this.breakable = false;
 			this.breakTime = 0;
+			this.standsOwn = false;
+		}
+		if(this._id >= 5 && this._id <= 11 || this._id == 14) {
+			this.breakable = true;
 		}
 	}
 
@@ -716,14 +710,18 @@ class GameMap {
 		for(let i = 0; i < mapSize.x; i++) {
 			for(let j = 0; j < maxHeight + 1; j++) {
 				if(height[i] >= maxHeight - j) {
-					this.get(i, j + yOffset).id = 1;
-					this.get(i, j + 1 + yOffset).id = 3;
-					this.get(i, j + 2 + yOffset).id = 3;
+					if(Math.random() * 100 < 20) {
+						var flower = Math.min(5, Math.floor(Math.random() * 6));
+						this.get(i, j - 1 + yOffset).id = 5 + flower;
+					}
+					this.get(i, j + yOffset).id = 13;
+					this.get(i, j + 1 + yOffset).id = 2;
+					this.get(i, j + 2 + yOffset).id = 2;
 					var curRand = Math.random() * 10;
 					if(curRand <= 5) {
-						this.get(i, j + 3 + yOffset).id = 3;
+						this.get(i, j + 3 + yOffset).id = 2;
 						if(curRand <= 2) {
-							this.get(i, j + 4 + yOffset).id = 3;
+							this.get(i, j + 4 + yOffset).id = 2;
 						}
 					}
 					break;
@@ -743,6 +741,33 @@ class GameMap {
 					else {
 						this.get(i, j).id = 2;
 					}
+				}
+			}
+		}
+		var withoutTree = 0;
+		for(let i = 0; i < mapSize.x; i++) {
+			if(this.checkCoords(i - 1, 0) && this.checkCoords(i + 1, 0)) {
+				for(let j = yOffset; j < mapSize.y; j++) {
+					if(this.get(i, j).id == 13) {
+						if(this.get(i - 1, j).id == 13 && this.get(i + 1, j).id == 13) {
+							if(Math.random() * 250 <= withoutTree) {
+								this.get(i, j - 1).id = 14;
+								withoutTree = -2;
+							}
+						}
+						break;
+					}
+				}
+			}
+			withoutTree++;
+			for(let j = maxHeight + 1 + yOffset; j < mapSize.y; j++) {
+				var self = this;
+				var check = function(a, b) {
+					return (self.checkCoords(a, b) && self.get(a, b).id == 0);
+				}
+				var count = check(i - 1, j) || check(i + 1, j) || check(i, j - 1) || check(i, j + 1);
+				if(count && this.get(i, j).id != 0) {
+					this.get(i, j).id = 3;
 				}
 			}
 		}
@@ -802,10 +827,15 @@ class GameMap {
 				var pl = players[item[2][0]];
 				if(pl) {
 					pl.workers++;
-					pl.stone += 10;
+					if(self.get(item[0], item[1]).standsOwn) pl.stone += 10;
 				}
 			}
 			if(res[1]) {
+				if(self.checkCoords(item[0], item[1] - 1) && !self.get(item[0], item[1] - 1).standsOwn) {
+					self.get(item[0], item[1] - 1).breakMe();
+					pl.workers--;
+					nq.push([item[0], item[1] - 1, item[2]]);
+				}
 				var chunkid = self.getChunkID(item[0], item[1]);
 				self.emitChunk(chunkid.x, chunkid.y);
 			}
