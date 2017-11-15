@@ -31,12 +31,7 @@ socket.on('reg-success', function(key, id, name) {
 	activateGame();
 });
 
-socket.on('update', function(data) {
-	dataUpdated = false;
-	gameData = data;
-});
-
-socket.on('reg-disconnect', function(id) {
+socket.on('reg-disconnected', function(id) {
 	if(players.has(id)) {
 		players.get(id).graphics.forEach(function(item, i, arr) {
 			item.unstageFromScene(objects);
@@ -44,6 +39,11 @@ socket.on('reg-disconnect', function(id) {
 		players.get(id).nameSprite.unstageFromScene(objects);
 		players.delete(id);
 	}
+});
+
+socket.on('update', function(data) {
+	dataUpdated = false;
+	gameData = data;
 });
 
 socket.on('map-chunk', function(chunk) {

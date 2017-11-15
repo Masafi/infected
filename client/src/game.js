@@ -2,9 +2,13 @@ const textureCSV = 'assets/texture.csv';
 const atlasSprite = 'assets/atlas.json';
 const playerSprite = 'assets/player.json';
 const backgroundImage = 'assets/background.png';
-const keycodes = [[87, 'w'], [65, 'a'], [83, 's'], [68, 'd']];	
+const keycodes = [[87, 'w'], [65, 'a'], [83, 's'], [68, 'd'], [32, ' ']];	
 var gScale = 2;
-var playerAnim = [['player_run', 1, false], ['player_run', 4, true], ['player_jump_up', 2, false], ['player_jump_down', 2, false]];
+var playerAnim = [['player_run', 1, false], 
+				['player_run', 4, true], 
+				['player_jump_up', 2, false], 
+				['player_jump_down', 2, false], 
+				['player_hit', 3, false]];
 
 PIXI.loader
 	.add(atlasSprite)
@@ -28,6 +32,7 @@ var wKey = keyboard(keycodes[0][0], keycodes[0][1]);
 var aKey = keyboard(keycodes[1][0], keycodes[1][1]);
 var sKey = keyboard(keycodes[2][0], keycodes[2][1]);
 var dKey = keyboard(keycodes[3][0], keycodes[3][1]);
+var spaceKey = keyboard(keycodes[4][0], keycodes[4][1]);
 
 class Vector2 {
 	constructor(x, y) {
@@ -134,7 +139,6 @@ class PhysicPrimitive {
 		this.size = new Vector2(0, 0);
 		this.vel = new Vector2(0, 0);
 		this.acc = new Vector2(0, 0);
-		this.mxvel = new Vector2(0, 0);
 		this._rpos = new Vector2(0, 0);
 		this.rscale = CellSize.mula(1);
 		this.standing = false;
@@ -202,6 +206,7 @@ class Player {
 
 	update(data = undefined) {
 		if(data) {
+			this.updated = true;
 			if(Math.abs(data.physics._pos.x - this.physics.pos.x) > 0.1 || Math.abs(data.physics._pos.y - this.physics.pos.y) > 0.1) {
 				var npos = new Vector2(data.physics._pos.x, data.physics._pos.y);
 				this.physics.pos = npos;
@@ -274,11 +279,10 @@ class Block {
 		this.graphics.initSprite('sprite_00.png');
 		this.solid = false;
 		this._id = 0;
-		this.needBlock = false;
 		this.name = '';
-		this.energyCost = 0;
-		this.stoneCost = 0;
 		this.textureOffset = new Vector2(0, 0);
+		this.multiTexture = 0;
+		this.multiTextureId = 0;
 
 		this.breakable = false;
 		this.isBreaking = false;
@@ -290,17 +294,16 @@ class Block {
 
 	update(data = undefined) {
 		if(data) {
-			this.id = data._id;
 			this.physics.pos.x = data.physics._pos.x;
 			this.physics.pos.y = data.physics._pos.y;
 			this.solid = data.solid;
 			this.breakable = data.breakable;
 			this.breakTime = data.breakTime;
-			this.energyCost = data.energyCost;
-			this.stoneCost = data.stoneCost;
-			this.needBlock = data.needBlock;
 			this.name = data.name;
 			this.textureOffset = new Vector2(data.textureOffset.x, data.textureOffset.y);
+			this.multiTexture = data.multiTexture;
+			this.multiTextureId = data.multiTextureId;
+			this.id = data._id;
 		}
 		this.graphics.pos = this.physics.pos.add(this.textureOffset);
 		this.graphics.updatePos(camera);
@@ -327,8 +330,17 @@ class Block {
 		}
 	}
 
+	updateSprite() {
+		if(!this.multiTexture) {
+			this.graphics.sprite.texture = PIXI.Texture.fromFrame('sprite_' + (this.id < 10 ? '0' : '') + this.id + '.png');
+		}
+		else {
+			this.graphics.sprite.texture = PIXI.Texture.fromFrame('sprite_' + (this.id < 10 ? '0' : '') + this.id + '_' +
+											(this.multiTextureId < 10 ? '0' : '') + this.multiTextureId + '.png');
+		}
+	}
+
 	set id(nid) {
-		this.graphics.sprite.texture = PIXI.Texture.fromFrame('sprite_' + (nid < 10 ? '0' : '') + nid + '.png');
 		if(this._id != nid) {
 			if(this.breakingAnim && this.breakingAnim.sprite) {
 				this.breakingAnim.unstageFromScene(this.scene);
@@ -342,6 +354,7 @@ class Block {
 			this.graphics.unstageFromScene(this.scene);
 		}
 		this._id = nid;
+		this.updateSprite();
 	}
 
 	get id() {
@@ -536,17 +549,14 @@ var fpstime = 0;
 
 function frame() {
 	requestAnimationFrame(frame);
-	if(players.has(myId)) {
-		var curTime = new Date().getTime();
-		var dt = (curTime - lastTickTime) / 1000;
-		lastTickTime = curTime;
-		fpstime += dt;
-		fps++;
-		if(fpstime >= 1) {
-			fps = 0;
-			fpstime = 0;
-		}
-		//players.get(myId).tickUpdate(dt);
+	var curTime = new Date().getTime();
+	var dt = (curTime - lastTickTime) / 1000;
+	lastTickTime = curTime;
+	fpstime += dt;
+	fps++;
+	if(fpstime >= 1) {
+		fps = 0;
+		fpstime = 0;
 	}
 	if(!dataUpdated) {
 		dataUpdated = true;
@@ -558,7 +568,6 @@ function frame() {
 			}
 			players.get(item.id).update(item);
 		});
-		var curPlayer = players.get(myId);
 		if(players.has(myId)) {
 			camera = players.get(myId).pos.sub(new Vector2(window.innerWidth / gScale / 2, window.innerHeight / gScale / 2));
 			camera.x = Math.max(Math.min(camera.x, mapSize.x * CellSize.x - window.innerWidth / gScale), 0);

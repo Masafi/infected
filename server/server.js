@@ -11,11 +11,12 @@ var jwtSecretKey = "supersecrettodochange";
 var taffy = require('taffydb');
 var fs = require('fs');
 var csvParse = require('csv-parse');
+var path = '';
 
 //HTTP server
 var port = process.env.PORT || 80;
 server.listen(port);
-app.use(express.static(__dirname + '/../client'));
+app.use(express.static(path + 'client'));
 
 //Game server
 ///Vars
@@ -29,7 +30,7 @@ var leftPlayers = new Map();
 
 ///Sockets behavior
 io.on('connection', function(socket) {
-	console.log(socket.id.toString() + " connected, total: " + io.engine.clientsCount);
+	log(socket.id.toString() + " connected, total: " + io.engine.clientsCount);
 	socketid.set(socket.id.toString(), socket);
 	socket.emit('requestToken');
 
@@ -70,7 +71,7 @@ io.on('connection', function(socket) {
 			var tok = pl.network.makeToken();
 			usersNetwork.insert({'id': nid, 'socket': socket.id.toString(), 'token': tok});
 			socket.emit('reg-success', tok, nid, name);
-			console.log(name +  " (" + nid + ") joined the game. Total: " + usersNetwork().count());
+			log(name +  " (" + nid + ") joined the game. Total: " + usersNetwork().count());
 		}
 	});
 
@@ -104,13 +105,14 @@ io.on('connection', function(socket) {
 	});
 
 	socket.on('disconnect', function() {
-		console.log(socket.id.toString() + " disconnected, total: " + io.engine.clientsCount);
+		log(socket.id.toString() + " disconnected, total: " + io.engine.clientsCount);
 		if(usersNetwork({'socket': socket.id.toString()}).count() > 0) {
 			var usr = usersNetwork({'socket': socket.id.toString()}).first();
 			var id = usr.id;
 			leftPlayers.set(usr.token, id);
 			players[id].network.left = true;
-			console.log(players[id].network.nickname + " left the game. Total: " + usersNetwork().count());
+			io.to('users').emit('reg-disconnected', id);
+			log(players[id].network.nickname + " left the game. Total: " + usersNetwork().count());
 		}
 	});
 });
@@ -142,6 +144,13 @@ function reqId() {
 	}
 	ids.push(true);
 	return ids.length - 1;
+}
+
+function log(string, warn = 0) {
+	var pref = '[INFO]: ';
+	if(warn == 1) pref = '[WARN]: ';
+	if(warn >= 2) pref = '[ERR]: ';
+	console.log(pref + string);
 }
 
 //Game logic
@@ -345,10 +354,10 @@ class PhysicPrimitive {
 		}
 	}
 
-	resolveCollision(objects, dt) {
+	resolveCollision(objects, dt, onCollision, source) {
 		var collisionDataEnd = [dt + 1, new Vector2(0, 0)];
 		var self = this;
-		
+		var id = 0;
 		objects.forEach(function(plObj, i, arr) {
 			var platform = plObj;
 			if(platform.pos == undefined) {
@@ -358,10 +367,14 @@ class PhysicPrimitive {
 			var collisionData = self.collision(platform, dt);
 			if(collisionData[0] <= collisionDataEnd[0]) {
 				collisionDataEnd = collisionData;
+				id = i;
 			}
 		});
 
 		if(collisionDataEnd[0] >= -eps && collisionDataEnd[0] <= dt) {
+			var res = 0;
+			if(onCollision) res = onCollision(objects[id], source);
+			if(res == 2) return;
 			if(collisionDataEnd[0] <= eps) collisionDataEnd[0] = 0;
 			self.standing = collisionDataEnd[1].y == -1;
 			self.pos = self.updatePosition(self.vel, collisionDataEnd[0] - 0.000000001);
@@ -371,6 +384,7 @@ class PhysicPrimitive {
 			var collisionDataFirst = [dt - collisionDataEnd[0], new Vector2(0, 0).add(collisionDataEnd[1])];
 			collisionDataEnd[0] = collisionDataFirst[0] + 1;
 			var iid = -1;
+			if(res == 1) return;
 			objects.forEach(function(plObj, i, arr) {
 				var platform = plObj;
 				if(platform.pos == undefined) {
@@ -385,6 +399,8 @@ class PhysicPrimitive {
 			});
 
 			if(collisionDataEnd[0] >= -eps && collisionDataEnd[0] <= collisionDataFirst[0]) {
+				if(onCollision) res = onCollision(objects[id], source);
+				if(res == 2) return;
 				if(collisionDataEnd[0] <= eps) collisionDataEnd[0] = 0;
 				self.collision(objects[iid], dt, true);
 				self.standing = self.standing || collisionDataEnd[1].y == -1;
@@ -427,7 +443,7 @@ class Player {
 		this.physics = new PhysicPrimitive();
 		this.physics.pos = new Vector2(((id + 1) * 1000) % (mapSize.x * CellSize.x), 0);
 		this.physics.size = new Vector2(15, 21);
-		this.physics.mxvel = new Vector2(400, 4000);
+		this.physics.mxvel = new Vector2(150, 4000);
 		this.physics.acc = new Vector2(0, this.physics.g);
 		
 		this.network = new NetworkPrimitive();
@@ -455,7 +471,7 @@ class Player {
 			this.physics.vel.x = 0;
 		}
 
-		if (this.keys['w'] && this.physics.standing) {
+		if ((this.keys['w'] || this.keys[' ']) && this.physics.standing) {
 			this.physics.vel.y = -400;
 		}
 		
@@ -480,7 +496,7 @@ class Player {
 					var block = map.get(Math.floor(rpos.x), Math.floor(rpos.y));
 					var good = true;
 					players.forEach(function(item, i, arr) {
-						if(good && item.physics.intersects(block.physics)) {
+						if(good && !item.left && item.physics.intersects(block.physics)) {
 							good = false;
 						}
 					});
@@ -496,6 +512,21 @@ class Player {
 			}
 			this.mouseUpdated = false;
 		}
+	}
+
+	onCollision(phys, self = undefined) {
+		var block = map.get(phys.rpos.x, phys.rpos.y);
+		if(block.damage == 0) {
+			return 0;
+		}
+		if(!self) self = this;
+		var sign = 1;
+		if(self.physics.pos.x + self.physics.size.x / 2 - block.physics.pos.x - block.physics.size.x / 2 <= 0) {
+			sign = -1;
+		}
+		self.physics.vel = self.physics.vel.add(new Vector2(sign * 500, 0));
+		self.physics.vel.y = -300;
+		return 2;
 	}
 
 	tickUpdate(dt) {
@@ -536,7 +567,7 @@ class Player {
 		boundingBox.pos = new Vector2(mapSize.x * CellSize.x, -1000);
 		boundingBox.size = new Vector2(1000, 2000 + mapSize.y * CellSize.y);
 		collisionObjects.push(boundingBox);
-		this.physics.resolveCollision(collisionObjects, dt);
+		this.physics.resolveCollision(collisionObjects, dt, this.onCollision, this);
 	}
 }
 
@@ -551,6 +582,9 @@ class Block {
 		this.energyCost = 0;
 		this.stoneCost = 0;
 		this.textureOffset = new Vector2(0, 0);
+		this.multiTexture = 0;
+		this.multiTextureId = 8;
+		this.damage = 0;
 
 		this.breakable = false;
 		this.isBreaking = false;
@@ -581,6 +615,29 @@ class Block {
 		return false;
 	}
 
+	updateMultiTexture() {
+		if(this.multiTexture) {
+			var type = 8;
+			var check = function(i, j) {
+				return map.checkCoords(i, j) && !map.get(i, j).solid;
+			}
+			var x = this.physics.rpos.x;
+			var y = this.physics.rpos.y;
+			var neigh = check(x, y - 1) * 8 + check(x + 1, y) * 4 + check(x, y + 1) * 2 + check(x - 1, y);
+			if(neigh == 0b1111 || neigh == 0b0000 || neigh == 0b0101 || neigh == 0b1010) type = 8;
+			else if(neigh == 0b1000 || neigh == 0b1101) type = 1;
+			else if(neigh == 0b0100 || neigh == 0b1110) type = 3;
+			else if(neigh == 0b0010 || neigh == 0b0111) type = 5;
+			else if(neigh == 0b0001 || neigh == 0b1011) type = 7;
+			else if(neigh == 0b1001) type = 0;
+			else if(neigh == 0b1100) type = 2;
+			else if(neigh == 0b0110) type = 4;
+			else if(neigh == 0b0011) type = 6;
+			if(this.id == 1 && type > 2) type = 1;
+			this.multiTextureId = type;
+		}
+	}
+
 	set id(nid) {
 		this._id = nid;
 		var info = blockInfo[nid];
@@ -592,6 +649,8 @@ class Block {
 		this.needBlock = info.needBlock;
 		this.name = info.name;
 		this.textureOffset = info.textureOffset;
+		this.multiTexture = info.multiTexture;
+		this.damage = info.damage;
 	}
 
 	get id() {
@@ -622,6 +681,14 @@ class Chunk {
 					arr.push(block.physics);
 				}
 			});
+		});
+	}
+
+	updateMultiTexture() {
+		this.chunk.forEach(function(row, i, arr) {
+			row.forEach(function(item, j, rarr) {
+				item.updateMultiTexture();
+			})
 		});
 	}
 
@@ -709,16 +776,21 @@ class GameMap {
 		var height = [];
 		var seed = Math.random() * 10;
 		var yOffset = 15;
+		var self = this;		
 		for(let i = 0; i < mapSize.x; i++) {
 			height.push(Math.floor(perlinNoise.noise(i / 10, seed, seed) * maxHeight + 1));
 		}
 		for(let i = 0; i < mapSize.x; i++) {
 			for(let j = 0; j < maxHeight + 1; j++) {
 				if(height[i] >= maxHeight - j) {
-					if(Math.random() * 100 < 50) {
+					var curRand = Math.random() * 100;
+					if(curRand < 50) {
 						var flower = Math.min(5, Math.floor(Math.random() * 6));
 						this.get(i, j - 1 + yOffset).id = 4 + flower;
 					}
+					// else if(curRand < 60) {
+					// 	this.get(i, j - 1 + yOffset).id = 11;
+					// }
 					this.get(i, j + yOffset).id = 1;
 					this.get(i, j + 1 + yOffset).id = 2;
 					this.get(i, j + 2 + yOffset).id = 2;
@@ -761,7 +833,6 @@ class GameMap {
 			}
 			withoutTree++;
 			for(let j = maxHeight + 1 + yOffset; j < mapSize.y; j++) {
-				var self = this;
 				var check = function(a, b) {
 					return (self.checkCoords(a, b) && self.get(a, b).id == 0);
 				}
@@ -771,6 +842,11 @@ class GameMap {
 				}
 			}
 		}
+		this.map.forEach(function(row, i, arr) {
+			row.forEach(function(item, j, rarr) {
+				item.updateMultiTexture();
+			});
+		});
 	}
 
 	checkCoords(i, j) {
@@ -855,17 +931,19 @@ function setup() {
 	map = new GameMap();
 	map.generateMap();
 	setInterval(tick, 16);
-	console.log("Server started successfully");
+	log("Server started successfully");
 }
 
 function loadFiles() {
-	fs.readFile('server/res/blockInfo.csv', 'utf8', function(err, data) {
+	fs.readFile(path + 'server/res/blockInfo.csv', 'utf8', function(err, data) {
 		if(err) {
-			console.log("Error reading blockInfo file", err);
+			log("Error reading blockInfo file", 2);
+			log(err, 2);
 		}
 		csvParse(data, {delimiter: ';'}, function(errr, output) {
 			if(errr) {
-				console.log("Error reading blockInfo file #2", errr);
+				log("Error reading blockInfo file #2", 2);
+				log(errr, 2);
 			}
 			for(let i = 1; i < output.length; i++) {
 				var info = {};
@@ -879,6 +957,8 @@ function loadFiles() {
 				info.needBlock = Number(cur[6]);
 				info.name = cur[7];
 				info.textureOffset = new Vector2(Number(cur[8]), Number(cur[9]));
+				info.multiTexture = Number(cur[10]);
+				info.damage = Number(cur[11]);
 				blockInfo.push(info);
 			}
 			setup();
@@ -898,12 +978,13 @@ function tick() {
 	fpsTime += dt;
 	fps++;
 	if(fpsTime >= 1) {
-		console.log(Math.floor(fps / fpsTime));
 		fps = 0;
 		fpsTime = 0;
 	}
-	if(dt >= 0.5) {
-		return;
+	if(dt > 0.064) {
+		var ticksSkipped = Math.ceil(dt / 0.016);
+		log("Server overload: skipping " + ticksSkipped + " ticks", 1);
+		dt = 0.064;
 	}
 	var data = [];
 	players.forEach(function (player, i, arr) {

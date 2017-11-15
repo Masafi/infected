@@ -205,8 +205,18 @@
             <key type="filename">split/release/breaking_03.png</key>
             <key type="filename">split/release/selectBorder.png</key>
             <key type="filename">split/release/sprite_00.png</key>
-            <key type="filename">split/release/sprite_01.png</key>
-            <key type="filename">split/release/sprite_02.png</key>
+            <key type="filename">split/release/sprite_01_00.png</key>
+            <key type="filename">split/release/sprite_01_01.png</key>
+            <key type="filename">split/release/sprite_01_02.png</key>
+            <key type="filename">split/release/sprite_02_00.png</key>
+            <key type="filename">split/release/sprite_02_01.png</key>
+            <key type="filename">split/release/sprite_02_02.png</key>
+            <key type="filename">split/release/sprite_02_03.png</key>
+            <key type="filename">split/release/sprite_02_04.png</key>
+            <key type="filename">split/release/sprite_02_05.png</key>
+            <key type="filename">split/release/sprite_02_06.png</key>
+            <key type="filename">split/release/sprite_02_07.png</key>
+            <key type="filename">split/release/sprite_02_08.png</key>
             <key type="filename">split/release/sprite_03.png</key>
             <key type="filename">split/release/sprite_04.png</key>
             <key type="filename">split/release/sprite_05.png</key>
@@ -214,6 +224,7 @@
             <key type="filename">split/release/sprite_07.png</key>
             <key type="filename">split/release/sprite_08.png</key>
             <key type="filename">split/release/sprite_09.png</key>
+            <key type="filename">split/release/sprite_11.png</key>
             <struct type="IndividualSpriteSettings">
                 <key>pivotPoint</key>
                 <point_f>0.5,0.5</point_f>
@@ -247,8 +258,19 @@
             <filename>split/release/breaking_02.png</filename>
             <filename>split/release/breaking_03.png</filename>
             <filename>split/release/selectBorder.png</filename>
-            <filename>split/release/sprite_01.png</filename>
-            <filename>split/release/sprite_02.png</filename>
+            <filename>split/release/sprite_00.png</filename>
+            <filename>split/release/sprite_01_00.png</filename>
+            <filename>split/release/sprite_01_01.png</filename>
+            <filename>split/release/sprite_01_02.png</filename>
+            <filename>split/release/sprite_02_00.png</filename>
+            <filename>split/release/sprite_02_01.png</filename>
+            <filename>split/release/sprite_02_02.png</filename>
+            <filename>split/release/sprite_02_03.png</filename>
+            <filename>split/release/sprite_02_04.png</filename>
+            <filename>split/release/sprite_02_05.png</filename>
+            <filename>split/release/sprite_02_06.png</filename>
+            <filename>split/release/sprite_02_07.png</filename>
+            <filename>split/release/sprite_02_08.png</filename>
             <filename>split/release/sprite_03.png</filename>
             <filename>split/release/sprite_04.png</filename>
             <filename>split/release/sprite_05.png</filename>
@@ -257,7 +279,7 @@
             <filename>split/release/sprite_08.png</filename>
             <filename>split/release/sprite_09.png</filename>
             <filename>split/release/sprite_10.png</filename>
-            <filename>split/release/sprite_00.png</filename>
+            <filename>split/release/sprite_11.png</filename>
         </array>
         <key>ignoreFileList</key>
         <array/>
