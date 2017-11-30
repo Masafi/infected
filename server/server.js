@@ -147,10 +147,12 @@ function reqId() {
 }
 
 function log(string, warn = 0) {
-	var pref = '[INFO]: ';
-	if(warn == 1) pref = '[WARN]: ';
-	if(warn >= 2) pref = '[ERR]: ';
-	console.log(pref + string);
+	var pref;	
+	if(warn == 0) pref = '[INFO]: ';
+	else if(warn < 0) pref = '[DBG]: ';
+	else if(warn == 1) pref = '[WARN]: ';
+	else pref = '[ERR]: ';
+	console.log(pref + JSON.stringify(string));
 }
 
 //Game logic
@@ -236,21 +238,27 @@ class PhysicPrimitive {
 		this._pos = new Vector2(0, 0);
 		this.size = new Vector2(0, 0);
 		this.vel = new Vector2(0, 0);
+		this.frameVel = new Vector2(0, 0);
 		this.acc = new Vector2(0, 0);
-		this.mxvel = new Vector2(0, 0);
-		this.pivot = new Vector2(0, 0);
 		this._rpos = new Vector2(0, 0);
 		this.rscale = CellSize.add(new Vector2(0, 0));
 		this.standing = false;
 		this.g = 1000;
+		this.slowDown = new Vector2(20, 0);
 	}
 
 	updateSpeed(dt) {
-		return this.vel.add(this.acc.mula(dt)).max(this.mxvel.neg()).min(this.mxvel);
+		return this.vel.add(this.acc.mula(dt));
 	}
 
 	updatePosition(vel, dt) {
 		return this.pos.add(vel.mula(dt));
+	}
+
+	brakes(dt) {
+		this.frameVel = this.vel.add(new Vector2(0, 0));
+		if(Math.abs(this.vel.x) <= this.slowDown.x * dt * 60) this.vel.x = 0;
+		else this.vel.x -= Math.sign(this.vel.x) * this.slowDown.x * dt * 60;
 	}
 
 	collision(that, dt) {
@@ -258,6 +266,7 @@ class PhysicPrimitive {
 		var bigBox = new PhysicPrimitive();
 		bigBox.pos = this.pos.min(this.updatePosition(relv, dt));
 		bigBox.size = this.pos.max(this.updatePosition(relv, dt)).add(this.size).sub(bigBox.pos);
+		var retVal = {};
 		if (bigBox.intersects(that)) {
 			var invEntry = new Vector2(0, 0);
 			var invExit = new Vector2(0, 0);
@@ -293,9 +302,11 @@ class PhysicPrimitive {
 			}
 			var entryTime = Math.max(entry.x, entry.y);
 			var exitTime = Math.min(exit.x, exit.y);
-			var normal = new Vector2(0, 0);
+			var normal = new Vector2(1, 1);
 			if (entryTime > exitTime || entry.x < -eps && entry.y < -eps || entry.x - dt > eps || entry.y - dt > eps) {
-				return [dt + 1, normal];
+				retVal.dt = dt + 1;
+				retVal.proj = new Vector2(1, 1);
+				return retVal;
 			} else {
 				if (entry.x - eps > entry.y) {
 					if (relv.x >= 0) {
@@ -310,11 +321,15 @@ class PhysicPrimitive {
 						normal = new Vector2(0, 1);
 					}
 				}
-				return [entryTime, normal];
+				retVal.dt = entryTime;
+				retVal.proj = normal;
+				return retVal;
 			}
 		}
 		else {
-			return [dt + 1, new Vector2(0, 0)];
+			retVal.dt = dt + 1;
+			retVal.proj = new Vector2(1, 1);
+			return retVal;
 		}
 	}
 
@@ -330,7 +345,6 @@ class PhysicPrimitive {
 			var leastProj = new Vector2(this.pos.x + this.size.x - that.pos.x, this.pos.y + this.size.y - that.pos.y);
 			var greatProj = new Vector2(that.pos.x + that.size.x - this.pos.x, that.pos.y + that.size.y - this.pos.y);
 			var mxVal = Math.max(Math.max(Math.max(leastProj.x, leastProj.y), greatProj.x), greatProj.y);
-			//console.log([leastProj, greatProj]);
 			if(leastProj.x < 0) leastProj.x = mxVal + 1;
 			if(leastProj.y < 0) leastProj.y = mxVal + 1;
 			if(greatProj.x < 0) greatProj.x = mxVal + 1;
@@ -354,84 +368,71 @@ class PhysicPrimitive {
 		}
 	}
 
-	resolveCollision(objects, dt, onCollision, source) {
-		var collisionDataEnd = [dt + 1, new Vector2(0, 0)];
+	resolveObjects(objects, collisionDataFirst) {
+		var ids = [];
 		var self = this;
-		var id = 0;
+		var collisionDataEnd = {}
+		var dt = collisionDataFirst.dt;
+		collisionDataEnd.dt = collisionDataFirst.dt;
+		collisionDataEnd.proj = new Vector2(1, 1);
 		objects.forEach(function(plObj, i, arr) {
 			var platform = plObj;
 			if(platform.pos == undefined) {
 				platform = plObj.physics;	
 			}
 			self.resolveIntersection(platform);
-			var collisionData = self.collision(platform, dt);
-			if(collisionData[0] <= collisionDataEnd[0]) {
+			var collisionData = self.collision(platform, collisionDataEnd.dt);
+			if(Math.abs(collisionData.dt - collisionDataEnd.dt) <= eps && collisionDataEnd.proj.x * collisionDataFirst.proj.x == 0 && collisionDataEnd.proj.y * collisionDataFirst.proj.y == 0) {
+				ids.push(i);
+			}
+			else if(collisionData.dt <= collisionDataEnd.dt && collisionData.proj.x * collisionDataFirst.proj.x == 0 && collisionData.proj.y * collisionDataFirst.proj.y == 0) {
 				collisionDataEnd = collisionData;
-				id = i;
+				ids = [i];
 			}
 		});
+		collisionDataEnd.dt = Math.max(0, Math.min(dt, collisionDataEnd.dt));
+		collisionDataEnd.obj = ids;
+		return collisionDataEnd;
+	}
 
-		if(collisionDataEnd[0] >= -eps && collisionDataEnd[0] <= dt) {
-			var res = 0;
-			if(onCollision) res = onCollision(objects[id], source);
-			if(res == 2) return;
-			if(collisionDataEnd[0] <= eps) collisionDataEnd[0] = 0;
-			self.standing = collisionDataEnd[1].y == -1;
-			self.pos = self.updatePosition(self.vel, collisionDataEnd[0] - 0.000000001);
-			var temp = new Vector2(collisionDataEnd[1].y, collisionDataEnd[1].x); 
-			self.vel = self.vel.mul(temp.mul(temp));
-			var timeLeft = dt - collisionDataEnd[0];
-			var collisionDataFirst = [dt - collisionDataEnd[0], new Vector2(0, 0).add(collisionDataEnd[1])];
-			collisionDataEnd[0] = collisionDataFirst[0] + 1;
-			var iid = -1;
-			if(res == 1) return;
-			objects.forEach(function(plObj, i, arr) {
-				var platform = plObj;
-				if(platform.pos == undefined) {
-					platform = plObj.physics;	
-				}
-				self.resolveIntersection(platform);
-				var collisionData = self.collision(platform, collisionDataEnd[0]);
-				if(collisionData[0] <= collisionDataEnd[0] && collisionData[1].x * collisionDataFirst[1].x == 0 && collisionData[1].y * collisionDataFirst[1].y == 0) {
-					collisionDataEnd = collisionData;
-					iid = i;
-				}
-			});
+	updateByCollisionData(data, objects, self) {
+		var projVec = new Vector2(data.proj.y, data.proj.x);
+		this.standing = this.standing || data.proj.y == -1;
+		this.pos = this.updatePosition(this.vel, data.dt - eps);
+		this.vel = this.vel.mul(projVec.mul(projVec));
 
-			if(collisionDataEnd[0] >= -eps && collisionDataEnd[0] <= collisionDataFirst[0]) {
-				if(onCollision) res = onCollision(objects[id], source);
-				if(res == 2) return;
-				if(collisionDataEnd[0] <= eps) collisionDataEnd[0] = 0;
-				self.collision(objects[iid], dt, true);
-				self.standing = self.standing || collisionDataEnd[1].y == -1;
-				self.pos = self.updatePosition(self.vel, collisionDataEnd[0]);
-				self.vel = new Vector2(0, 0);
-			}
-			else {
-				self.pos = self.updatePosition(self.vel, timeLeft);	
-			}
-		}
-		else {
-			self.pos = self.updatePosition(self.vel, dt);	
-		}
+		data.obj.forEach(function(item, i, arr) {
+			self.onCollision(objects[item]);
+		});
+	}
+
+	resolveCollision(objects, dt, self) {
+		this.standing = false;
+
+		var collisionData = {dt: dt, proj: new Vector2(0, 0)};
+		collisionData = this.resolveObjects(objects, collisionData);
+		this.updateByCollisionData(collisionData, objects, self);
+		collisionData.dt = dt - collisionData.dt;
+		collisionData = this.resolveObjects(objects, collisionData);
+		this.updateByCollisionData(collisionData, objects, self);
 	}
 
 	set pos(npos) {
-		this._pos = npos.sub(this.pivot);
+		this._pos = npos;
 		this._rpos = this._pos.div(this.rscale);
 	}
 	
 	set rpos(npos) {
-		this._rpos = npos.sub(this.pivot.div(this.rscale));
+		this._rpos = npos;
 		this._pos = this._rpos.mul(this.rscale);
 	}
 
 	get pos() {
-		return this._pos.add(this.pivot);
+		return this._pos;
 	}
 
 	get rpos() {
-		return this._rpos.add(this.pivot.div(this.rscale));
+		return this._rpos;
 	}
 }
 
@@ -443,8 +444,8 @@ class Player {
 		this.physics = new PhysicPrimitive();
 		this.physics.pos = new Vector2(((id + 1) * 1000) % (mapSize.x * CellSize.x), 0);
 		this.physics.size = new Vector2(15, 21);
-		this.physics.mxvel = new Vector2(150, 4000);
 		this.physics.acc = new Vector2(0, this.physics.g);
+		this.physics.onCollision = this.onCollision;
 		
 		this.network = new NetworkPrimitive();
 		this.network.nickname = name;
@@ -460,15 +461,12 @@ class Player {
 		this.iron = 100;
 	}
 
-	processKeys() {
+	processKeys(dt) {
 		if (this.keys['a']) {
-			this.physics.vel.x = -125;
+			this.physics.vel.x += Math.min(0, Math.max(-100 * 60 * dt, -150 * 60 * dt - this.physics.vel.x));
 		}
 		else if (this.keys['d']) {
-			this.physics.vel.x = 125;
-		}
-		else {
-			this.physics.vel.x = 0;
+			this.physics.vel.x += Math.max(0, Math.min(100 * 60 * dt, 150 * 60 * dt - this.physics.vel.x));
 		}
 
 		if ((this.keys['w'] || this.keys[' ']) && this.physics.standing) {
@@ -514,24 +512,19 @@ class Player {
 		}
 	}
 
-	onCollision(phys, self = undefined) {
-		var block = map.get(phys.rpos.x, phys.rpos.y);
-		if(block.damage == 0) {
-			return 0;
+	onCollision(block) {
+		if(block.id == 11) {
+			this.physics.vel.y = -400;
+			var sgn;
+			if(Math.sign(this.physics.vel.x)) sgn = -Math.sign(this.physics.vel.x); 
+			else sgn = Math.sign(2 * this.physics.pos.x + this.physics.size.x - 2 * block.physics.pos.x - block.physics.size.x);
+			this.physics.vel.x += sgn * 125 * 2.5;
 		}
-		if(!self) self = this;
-		var sign = 1;
-		if(self.physics.pos.x + self.physics.size.x / 2 - block.physics.pos.x - block.physics.size.x / 2 <= 0) {
-			sign = -1;
-		}
-		self.physics.vel = self.physics.vel.add(new Vector2(sign * 500, 0));
-		self.physics.vel.y = -300;
-		return 2;
 	}
 
 	tickUpdate(dt) {
 		//Pre update
-		this.processKeys();
+		this.processKeys(dt);
 		this.physics.vel = this.physics.updateSpeed(dt);
 		this.physics.standing = false;
 		
@@ -567,7 +560,8 @@ class Player {
 		boundingBox.pos = new Vector2(mapSize.x * CellSize.x, -1000);
 		boundingBox.size = new Vector2(1000, 2000 + mapSize.y * CellSize.y);
 		collisionObjects.push(boundingBox);
-		this.physics.resolveCollision(collisionObjects, dt, this.onCollision, this);
+		this.physics.resolveCollision(collisionObjects, dt, this);
+		this.physics.brakes(dt);
 	}
 }
 
@@ -678,7 +672,7 @@ class Chunk {
 		this.chunk.forEach(function(row, i, carr) {
 			row.forEach(function(block, j, rarr) {
 				if(block.solid) {
-					arr.push(block.physics);
+					arr.push(block);
 				}
 			});
 		});
@@ -788,9 +782,9 @@ class GameMap {
 						var flower = Math.min(5, Math.floor(Math.random() * 6));
 						this.get(i, j - 1 + yOffset).id = 4 + flower;
 					}
-					// else if(curRand < 60) {
-					// 	this.get(i, j - 1 + yOffset).id = 11;
-					// }
+					/*else if(curRand < 60) {
+						this.get(i, j - 1 + yOffset).id = 11;
+					}*/
 					this.get(i, j + yOffset).id = 1;
 					this.get(i, j + 1 + yOffset).id = 2;
 					this.get(i, j + 2 + yOffset).id = 2;

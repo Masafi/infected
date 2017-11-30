@@ -3,7 +3,7 @@ const atlasSprite = 'assets/atlas.json';
 const playerSprite = 'assets/player.json';
 const backgroundImage = 'assets/background.png';
 const keycodes = [[87, 'w'], [65, 'a'], [83, 's'], [68, 'd'], [32, ' ']];	
-var gScale = 2;
+var gScale = 1.7;
 var playerAnim = [['player_run', 1, false], 
 				['player_run', 4, true], 
 				['player_jump_up', 2, false], 
@@ -138,6 +138,7 @@ class PhysicPrimitive {
 		this._pos = new Vector2(0, 0);
 		this.size = new Vector2(0, 0);
 		this.vel = new Vector2(0, 0);
+		this.frameVel = new Vector2(0, 0);
 		this.acc = new Vector2(0, 0);
 		this._rpos = new Vector2(0, 0);
 		this.rscale = CellSize.mula(1);
@@ -169,7 +170,6 @@ class Player {
 		this.physics = new PhysicPrimitive();
 		this.physics.pos = new Vector2(200, -100);
 		this.physics.size = new Vector2(15, 21);
-		this.physics.mxvel = new Vector2(400, 4000);
 		this.physics.acc = new Vector2(0, this.physics.g);
 		this.direction = 0;
 
@@ -215,10 +215,10 @@ class Player {
 			this.physics.vel.y = data.physics.vel.y;
 			this.physics.acc.x = data.physics.acc.x;
 			this.physics.acc.y = data.physics.acc.y;
-			this.physics.mxvel.x = data.physics.mxvel.x;
-			this.physics.mxvel.y = data.physics.mxvel.y;
 			this.physics.size.x = data.physics.size.x;
 			this.physics.size.y = data.physics.size.y;
+			this.physics.frameVel.x = data.physics.frameVel.x;
+			this.physics.frameVel.y = data.physics.frameVel.y;
 			this.physics.g = data.physics.g;
 			this.physics.standing = data.physics.standing;
 			this.workers = data.workers;
@@ -226,17 +226,17 @@ class Player {
 			this.stone = data.stone;
 			this.iron = data.iron;
 		}
-		if(this.physics.vel.y > 0) {
+		if(this.physics.frameVel.y > 0) {
 			if(this.currentAnim != 2) {
 				this.updateAnimation(2);
 			}
 		}
-		else if(this.physics.vel.y < 0) {
+		else if(this.physics.frameVel.y < 0) {
 			if(this.currentAnim != 3) {
 				this.updateAnimation(3);
 			}
 		}
-		else if(this.physics.vel.x != 0) {
+		else if(this.physics.frameVel.x != 0) {
 			if(this.currentAnim != 1) {
 				this.updateAnimation(1);
 			}
@@ -246,11 +246,11 @@ class Player {
 		}
 		var self = this;
 		this.graphics.forEach(function(item, i, arr) {
-			if(self.physics.vel.x > 0) {
+			if(self.physics.frameVel.x > 0) {
 				self.direction = 0;
 				item.sprite.scale.x = 1;
 			}
-			else if(self.physics.vel.x < 0) {
+			else if(self.physics.frameVel.x < 0) {
 				self.direction = 1;
 				item.sprite.scale.x = -1;
 			}
@@ -520,12 +520,15 @@ function setup() {
 			mapScene.addChild(chunkScenes[i][j]);
 		}
 	}
+	renderDistance = window.innerWidth / CellSize.x / 2 / gScale + 1;
 
-	map = new GameMap();
 	
 	selectBorder.stageToScene(gameScene);
 
 	isGameLoaded = 1;
+
+	map = new GameMap();
+	
 	enableGame();
 	frame();
 }
