@@ -195,6 +195,7 @@ class Player {
 		this.energy = 100;
 		this.stone = 100;
 		this.iron = 100;
+		this.hp = 100;
 	}
 
 	updateAnimation(id) {
@@ -225,6 +226,7 @@ class Player {
 			this.energy = data.energy;
 			this.stone = data.stone;
 			this.iron = data.iron;
+			this.hp = data.hp;
 		}
 		if(this.physics.frameVel.y > 0) {
 			if(this.currentAnim != 2) {
@@ -256,6 +258,10 @@ class Player {
 			}
 			item.pos = self.pos.add(new Vector2(8, -1));
 			item.updatePos(camera);
+			var koef = Math.floor(self.hp * 255 / 100);
+			var hex = koef.toString(16);
+			hex = (hex.length == 1 ? "0" : "") + hex;
+			item.sprite.tint = parseInt('FF' + hex + hex, 16);
 		});
 		this.nameSprite.pos = this.pos.add(new Vector2(0, -25));
 		this.nameSprite.updatePos(camera);

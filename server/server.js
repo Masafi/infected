@@ -71,6 +71,7 @@ io.on('connection', function(socket) {
 			var tok = pl.network.makeToken();
 			usersNetwork.insert({'id': nid, 'socket': socket.id.toString(), 'token': tok});
 			socket.emit('reg-success', tok, nid, name);
+			io.to('users').emit('reg-new', name);
 			log(name +  " (" + nid + ") joined the game. Total: " + usersNetwork().count());
 		}
 	});
@@ -382,10 +383,12 @@ class PhysicPrimitive {
 			}
 			self.resolveIntersection(platform);
 			var collisionData = self.collision(platform, collisionDataEnd.dt);
-			if(Math.abs(collisionData.dt - collisionDataEnd.dt) <= eps && collisionDataEnd.proj.x * collisionDataFirst.proj.x == 0 && collisionDataEnd.proj.y * collisionDataFirst.proj.y == 0) {
+			if(Math.abs(collisionData.dt - collisionDataEnd.dt) <= eps) {
 				ids.push(i);
 			}
-			else if(collisionData.dt <= collisionDataEnd.dt && collisionData.proj.x * collisionDataFirst.proj.x == 0 && collisionData.proj.y * collisionDataFirst.proj.y == 0) {
+			else if(collisionData.dt <= collisionDataEnd.dt && 
+				(collisionDataFirst.proj.x && collisionData.proj.y == 0 || 
+					collisionDataFirst.proj.y && collisionData.proj.x == 0)) {
 				collisionDataEnd = collisionData;
 				ids = [i];
 			}
@@ -395,26 +398,35 @@ class PhysicPrimitive {
 		return collisionDataEnd;
 	}
 
-	updateByCollisionData(data, objects, self) {
+	updateByCollisionData(data, objects, used, self) {
 		var projVec = new Vector2(data.proj.y, data.proj.x);
 		this.standing = this.standing || data.proj.y == -1;
 		this.pos = this.updatePosition(this.vel, data.dt - eps);
 		this.vel = this.vel.mul(projVec.mul(projVec));
 
 		data.obj.forEach(function(item, i, arr) {
-			self.onCollision(objects[item]);
+			if(!used[item]) {
+				self.onCollision(objects[item]);
+			}
+			used[item] = true;
 		});
 	}
 
 	resolveCollision(objects, dt, self) {
 		this.standing = false;
 
-		var collisionData = {dt: dt, proj: new Vector2(0, 0)};
-		collisionData = this.resolveObjects(objects, collisionData);
-		this.updateByCollisionData(collisionData, objects, self);
-		collisionData.dt = dt - collisionData.dt;
-		collisionData = this.resolveObjects(objects, collisionData);
-		this.updateByCollisionData(collisionData, objects, self);
+		var used = [];
+		used.length = objects.length;
+		used.fill(false);
+
+		var collisionData = {dt: dt, proj: new Vector2(this.vel.x, this.vel.y)};
+		while(Math.abs(collisionData.dt) > eps) {
+			dt = collisionData.dt;
+			collisionData = this.resolveObjects(objects, collisionData);
+			this.updateByCollisionData(collisionData, objects, used, self);
+			collisionData.proj = new Vector2(this.vel.x, this.vel.y);
+			collisionData.dt = dt - collisionData.dt;
+		}
 	}
 
 	set pos(npos) {
@@ -459,14 +471,17 @@ class Player {
 		this.energy = 100;
 		this.stone = 100;
 		this.iron = 100;
+		this.hp = 100;
 	}
 
 	processKeys(dt) {
 		if (this.keys['a']) {
 			this.physics.vel.x += Math.min(0, Math.max(-100 * 60 * dt, -150 * 60 * dt - this.physics.vel.x));
+			this.hp += 100 * dt;
 		}
 		else if (this.keys['d']) {
 			this.physics.vel.x += Math.max(0, Math.min(100 * 60 * dt, 150 * 60 * dt - this.physics.vel.x));
+			this.hp -= 100 * dt;
 		}
 
 		if ((this.keys['w'] || this.keys[' ']) && this.physics.standing) {
@@ -515,6 +530,8 @@ class Player {
 	onCollision(block) {
 		if(block.id == 11) {
 			this.physics.vel.y = -400;
+			this.hp -= 10;
+			this.hp = Math.max(10, this.hp);
 			var sgn;
 			if(Math.sign(this.physics.vel.x)) sgn = -Math.sign(this.physics.vel.x); 
 			else sgn = Math.sign(2 * this.physics.pos.x + this.physics.size.x - 2 * block.physics.pos.x - block.physics.size.x);
@@ -562,6 +579,7 @@ class Player {
 		collisionObjects.push(boundingBox);
 		this.physics.resolveCollision(collisionObjects, dt, this);
 		this.physics.brakes(dt);
+		this.hp = Math.max(Math.min(100, this.hp), 0);
 	}
 }
 
@@ -644,6 +662,7 @@ class Block {
 		this.name = info.name;
 		this.textureOffset = info.textureOffset;
 		this.multiTexture = info.multiTexture;
+		this.multiTextureId = 8;
 		this.damage = info.damage;
 	}
 
@@ -782,9 +801,9 @@ class GameMap {
 						var flower = Math.min(5, Math.floor(Math.random() * 6));
 						this.get(i, j - 1 + yOffset).id = 4 + flower;
 					}
-					/*else if(curRand < 60) {
+					else if(curRand < 60) {
 						this.get(i, j - 1 + yOffset).id = 11;
-					}*/
+					}
 					this.get(i, j + yOffset).id = 1;
 					this.get(i, j + 1 + yOffset).id = 2;
 					this.get(i, j + 2 + yOffset).id = 2;
@@ -996,6 +1015,7 @@ function tick() {
 		iData.energy = player.energy;
 		iData.stone = player.stone;
 		iData.iron = player.iron;
+		iData.hp = player.hp;
 		data.push(iData);
 	});
 	map.update(dt);
