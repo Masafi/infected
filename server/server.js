@@ -477,11 +477,9 @@ class Player {
 	processKeys(dt) {
 		if (this.keys['a']) {
 			this.physics.vel.x += Math.min(0, Math.max(-100 * 60 * dt, -150 * 60 * dt - this.physics.vel.x));
-			this.hp += 100 * dt;
 		}
 		else if (this.keys['d']) {
 			this.physics.vel.x += Math.max(0, Math.min(100 * 60 * dt, 150 * 60 * dt - this.physics.vel.x));
-			this.hp -= 100 * dt;
 		}
 
 		if ((this.keys['w'] || this.keys[' ']) && this.physics.standing) {
