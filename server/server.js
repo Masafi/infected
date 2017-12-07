@@ -21,73 +21,157 @@ app.use(express.static(path + 'client'));
 //Game server
 ///Vars
 var lastTickTime = new Date().getTime();
-var usersNetwork = taffy.taffy();
-var ids = [];
-var players = [];
-var socketid = new Map();
 var blockInfo = [];
-var leftPlayers = new Map();
+var usersNetwork = taffy.taffy();
+var mxPlayers = 100;
+
+///Utility
+function verifyToken(token) {
+	var good = true;
+	if(token) {
+		jwt.verify(token, jwtSecretKey, function (err, decoded) {
+			if(err) {
+				good = false;	
+			}
+		});
+	}
+	else {
+		good = true;
+	}
+	good = good && usersNetwork({'token': token}).count() > 0;
+	return good;
+}
+
+function log(string, warn = 0) {
+	var pref;	
+	if(warn == 0) pref = '[INFO]: ';
+	else if(warn < 0) pref = '[DBG]: ';
+	else if(warn == 1) pref = '[WARN]: ';
+	else if(warn == 2) pref = '[ERR]: ';
+	else pref = '[ERR#' + warn + ']: ';
+	console.log(pref + JSON.stringify(string));
+}
+
+function reqId() {
+	var i = 0;
+	for(; usersNetwork({'id': i}).count() > 0; i++);
+	return i;
+}
 
 ///Sockets behavior
 io.on('connection', function(socket) {
-	log(socket.id.toString() + " connected, total: " + io.engine.clientsCount);
-	socketid.set(socket.id.toString(), socket);
 	socket.emit('requestToken');
 
 	socket.on('returnToken', function (token) {
 		var good = verifyToken(token);
 		if(good) {
-			var usr = usersNetwork({'token': token});
-			good = usr.count() > 0;
+			socket.join('users');
+			var usr = usersNetwork({'token': token}).first();
+			usr.socket = socket.id.toString();
+			usr.network.left = false;
+			socket.emit('reg-success', token, usr.id, usr.network.name);
+		}
+	});
+
+	socket.on('registration', function (name, side) {
+		if(usersNetwork({'socket': socket.id.toString()}).count() > 0) {
+			return;
+		}
+		var empty = true;
+		if(name) {
+			for(let i = 0; i < name.length; i++) {
+				if(name[i] != ' ') {
+					empty = false;
+					break;
+				}
+			}
+		}
+		if(empty) {
+			socket.emit('reg-error', "Username empty!");
+		}
+		else {
+			var network = new NetworkPrimitive();
+			network.name = name;
+			network.id = reqId();
+			network.socket = socket;
+			if(side != 1 || side != 0) {
+				side = 0;
+			}
+			network.side = side;
+			network.makeToken();
+			usersNetwork.insert({'id': network.id, 'socket': socket.id.toString(), 'token': network.token, 'network': network});
+			socket.emit('reg-success', network.token, network.id, name);
+			log(name +  " (" + network.id + ") joined the game. Total: " + usersNetwork().count());
+		}
+	});
+
+	socket.on('joinRoom', function(token, room) {
+		if(verifyToken(token)) {
+			var network = usersNetwork({'token': token}).first().network;
+			if(room >= 0 && room < rooms.length && network.room == -1 && !rooms[room].started && rooms[room].cntSides[network.side] < mxPlayers) {
+				network.room = room;
+				network.roomId = rooms[room].network.length;
+				rooms[room].network.push(network);
+				rooms[room].cntSides[network.side]++;
+				socket.join('room' + room);
+				rooms[room].emitRoom();
+			}
 		}
 		else {
 			socket.emit('reg-error', "Token extension error");
 		}
-		if(good) {
-			socket.join('users');
-			usersNetwork({'token': token}).update({'socket': socket.id.toString()});
-			var id = leftPlayers.get(token);
-			players[id].network.left = false;
-			socket.emit('reg-success', token, id, players[id].network.nickname);
-		}
-		else {
-
-		}
 	});
 
-	socket.on('registration', function (name) {
-		if(usersNetwork({'socket': socket.id.toString()}).count() > 0) {
-			return;
-		}
-		if(!name || name.length === 0) {
-			socket.emit('reg-error', "Username empty!");
+	socket.on('leaveRoom', function (token) {
+		if(verifyToken(token)) {
+			var network = usersNetwork({'token': token}).first().network;
+			var room = network.room;
+			if(room >= 0 && room < rooms.length) {
+				rooms[room].network.splice(network.roomId, 1);
+				network.room = -1;
+				network.roomId = -1;
+				rooms[room].cntSides[network.side]--;
+				socket.leave('room' + room);
+				rooms[room].emitRoom();
+			}
 		}
 		else {
-			socket.join('users');
-			var nid = reqId();
-			var pl = new Player(name, nid, socket.id.toString());
-			players.length = Math.max(nid + 1, players.length);
-			players[nid] = pl;
-			var tok = pl.network.makeToken();
-			usersNetwork.insert({'id': nid, 'socket': socket.id.toString(), 'token': tok});
-			socket.emit('reg-success', tok, nid, name);
-			io.to('users').emit('reg-new', name);
-			log(name +  " (" + nid + ") joined the game. Total: " + usersNetwork().count());
+			socket.emit('reg-error', "Token extension error");
 		}
 	});
 
 	socket.on('requestChunk', function(i, j, token) {
 		if(verifyToken(token)) {
-			map.emitChunk(i, j, socket);
+			var network = usersNetwork({'token': token}).first().network;
+			if(room >= 0 && room < rooms.length && rooms[room].started) {
+				rooms[room].map.emitChunk(i, j, socket);
+			}
 		}
 		else {
 			socket.emit('reg-error', "Token extension error");
 		}
 	});
 
+	socket.on('requestRooms', function(token) {
+		if(verifyToken(token)) {
+			var data = [];
+			rooms.forEach(function(room, i, arr) {
+				var obj = {};
+				obj.id = room.id;
+				obj.players = room.cntSides;
+				obj.started = room.started;
+				data.push(obj);
+			});
+			socket.emit('rooms', data);
+		}
+	});
+
 	socket.on('keyboard', function (key, state, token) {
 		if(verifyToken(token)) {
-			players[usersNetwork({'token': token}).first().id].keys[key] = state;
+			var network = usersNetwork({'token': token}).first().network;
+			if(room >= 0 && room < rooms.length && rooms[room].started) {
+				rooms[room].players[network.roomId].keys[key] = state;
+			}
 		}
 		else {
 			socket.emit('reg-error', "Token extension error");
@@ -96,9 +180,12 @@ io.on('connection', function(socket) {
 
 	socket.on('mouse', function (pos, button, token) {
 		if(verifyToken(token)) {
-			players[usersNetwork({'token': token}).first().id].mousePos = new Vector2(pos.x, pos.y);
-			players[usersNetwork({'token': token}).first().id].mouseUpdated = true;
-			players[usersNetwork({'token': token}).first().id].mouseButton = button;
+			var network = usersNetwork({'token': token}).first().network;
+			if(room >= 0 && room < rooms.length && rooms[room].started) {
+				rooms[room].players[network.roomId].mousePos = new Vector2(pos.x, pos.y);
+				rooms[room].players[network.roomId].mouseUpdated = true;
+				rooms[room].players[network.roomId].mouseButton = button;
+			}
 		}
 		else {
 			socket.emit('reg-error', "Token extension error");
@@ -106,57 +193,28 @@ io.on('connection', function(socket) {
 	});
 
 	socket.on('disconnect', function() {
-		log(socket.id.toString() + " disconnected, total: " + io.engine.clientsCount);
 		if(usersNetwork({'socket': socket.id.toString()}).count() > 0) {
 			var usr = usersNetwork({'socket': socket.id.toString()}).first();
-			var id = usr.id;
-			leftPlayers.set(usr.token, id);
-			players[id].network.left = true;
-			io.to('users').emit('reg-disconnected', id);
-			log(players[id].network.nickname + " left the game. Total: " + usersNetwork().count());
+			var network = usr.network;
+			network.left = true;
+			var room = network.room;
+			if(room >= 0 && room < rooms.length) {
+				rooms[room].network.splice(network.roomId, 1);
+				rooms[room].cntSides[network.side]--;
+				network.room = -1;
+				network.roomId = -1;
+				socket.leave('room' + room);
+				rooms[room].emitRoom();
+			}
+			log(network.name + " left the game. Total: " + usersNetwork().count());
 		}
 	});
 });
 
-function verifyToken(token) {
-	var good = 1;
-	if(token) {
-		jwt.verify(token, jwtSecretKey, function (err, decoded) {
-			if(err) {
-				good = 0;	
-			}
-		});
-	}
-	else {
-		good = 0;
-	}
-	if(good) {
-		good = usersNetwork({'token': token}).count() > 0;
-	}
-	return good;
-}
-
-function reqId() {
-	for (var i = 0; i < ids.length; i++) {
-		if(ids[i] == false) {
-			ids[i] = true;
-			return i;
-		}
-	}
-	ids.push(true);
-	return ids.length - 1;
-}
-
-function log(string, warn = 0) {
-	var pref;	
-	if(warn == 0) pref = '[INFO]: ';
-	else if(warn < 0) pref = '[DBG]: ';
-	else if(warn == 1) pref = '[WARN]: ';
-	else pref = '[ERR]: ';
-	console.log(pref + JSON.stringify(string));
-}
-
 //Game logic
+const eps = 1e-6;
+const chunkSize = 8;
+const maxHeight = 15;
 
 class Vector2 {
 	constructor(x, y) {
@@ -209,27 +267,28 @@ class Vector2 {
 	}
 }
 
-const eps = 1e-6;
-const chunkSize = 8;
 var mapSize = new Vector2(512, 128);
 var CellSize = new Vector2(16, 16);
-const maxHeight = 15; 
 
 class NetworkPrimitive {
 	constructor() {
-		this.nickname = "";
+		this.name = "";
 		this.id = -1;
 		this.socket = undefined;
 		this.token = undefined;
+		this.left = false;
+		this.room = -1;
+		this.roomId = -1;
+		this.side = 0;
 		this.left = false;
 	}
 
 	makeToken() {
 		var profile = {};
-		profile.nick = this.nickname;
-		profile.sid = this.socket;
+		profile.nick = this.name;
+		profile.sid = this.socket.id.toString();
 		profile.id = this.id;
-		this.token = jwt.sign(profile, jwtSecretKey, { expiresIn: "1h" });
+		this.token = jwt.sign(profile, jwtSecretKey, { expiresIn: "1d" });
 		return this.token;
 	}
 }
@@ -449,9 +508,9 @@ class PhysicPrimitive {
 }
 
 class Player {
-	constructor(name, id, socket) {
+	constructor(network, map) {
 		this.keys = {};
-		this.id = id;
+		this.id = network.id;
 
 		this.physics = new PhysicPrimitive();
 		this.physics.pos = new Vector2(((id + 1) * 1000) % (mapSize.x * CellSize.x), 0);
@@ -459,10 +518,9 @@ class Player {
 		this.physics.acc = new Vector2(0, this.physics.g);
 		this.physics.onCollision = this.onCollision;
 		
-		this.network = new NetworkPrimitive();
-		this.network.nickname = name;
-		this.network.id = id;
-		this.network.socket = socket;
+		this.network = network;
+		this.map = map;
+		this.room = 0;
 
 		this.mousePos = new Vector2(0, 0);
 		this.mouseUpdated = false;
@@ -491,20 +549,20 @@ class Player {
 			rpos.x = Math.floor(rpos.x);
 			rpos.y = Math.floor(rpos.y);
 			if(this.mouseButton == 0) {
-				if(map.checkCoords(rpos.x, rpos.y) && this.workers >= 1) {
-					var block = map.get(rpos.x, rpos.y);
+				if(this.map.checkCoords(rpos.x, rpos.y) && this.workers >= 1) {
+					var block = this.map.get(rpos.x, rpos.y);
 					if(block.needBlock || this.energy >= block.energyCost) { 
 						if(block.breakMe()) {
 							this.workers--;
 							if(!block.needBlock) this.energy -= block.energyCost;
-							map.updateBlock(rpos.x, rpos.y, [this.id]);
+							this.map.updateBlock(rpos.x, rpos.y, [this.id]);
 						}
 					}
 				}
 			}
 			else if(this.mouseButton == 2) {
-				if(map.checkCoords(rpos.x, rpos.y) && this.workers >= 1 && this.energy >= 5 && this.stone >= 5) {
-					var block = map.get(Math.floor(rpos.x), Math.floor(rpos.y));
+				if(this.map.checkCoords(rpos.x, rpos.y) && this.workers >= 1 && this.energy >= 5 && this.stone >= 5) {
+					var block = this.map.get(Math.floor(rpos.x), Math.floor(rpos.y));
 					var good = true;
 					players.forEach(function(item, i, arr) {
 						if(good && !item.left && item.physics.intersects(block.physics)) {
@@ -515,8 +573,8 @@ class Player {
 						block.id = 2;
 						this.energy -= 5;
 						this.stone -= 5;
-						var chunkid = map.getChunkID(Math.floor(rpos.x), Math.floor(rpos.y));
-						map.emitChunk(chunkid.x, chunkid.y);
+						var chunkid = this.map.getChunkID(Math.floor(rpos.x), Math.floor(rpos.y));
+						this.map.emitChunk(chunkid.x, chunkid.y);
 					}
 					this.mouseUpdated = false;
 				}
@@ -548,10 +606,10 @@ class Player {
 		var iPos = this.physics.rpos.mula(1);
 		iPos.x = Math.floor(iPos.x);
 		iPos.y = Math.floor(iPos.y);
-		iPos = map.getChunkID(iPos.x, iPos.y);
+		iPos = this.map.getChunkID(iPos.x, iPos.y);
 		var checkAdd = function (ip) {
 			if(ip.x >= 0 && ip.y >= 0 && ip.x < mapSize.x / chunkSize && ip.y < mapSize.y / chunkSize) {
-				map.map[ip.x][ip.y].getStaticObj(collisionObjects);
+				this.map.map[ip.x][ip.y].getStaticObj(collisionObjects);
 			}
 		}
 		checkAdd(iPos.add(new Vector2(0, 0)));
@@ -581,6 +639,28 @@ class Player {
 	}
 }
 
+class Virus {
+	constructor(network) {
+		this.keys = {};
+		this.id = network.id;
+
+		this.block = undefined;
+
+		this.network = network;
+
+		this.mousePos = new Vector2(0, 0);
+		this.mouseUpdated = false;
+
+		this.workers = 3;
+		this.energy = 100;
+		this.stone = 100;
+		this.iron = 100;
+		this.hp = 100;
+		this.map = undefined;
+		this.room = 0;
+	}
+}
+
 class Block {
 	constructor() {
 		this.physics = new PhysicPrimitive();
@@ -600,6 +680,7 @@ class Block {
 		this.isBreaking = false;
 		this.breakTime = 0;
 		this.breakTimer = 0;
+		this.map = undefined;
 	}
 
 	update(dt) {
@@ -629,7 +710,7 @@ class Block {
 		if(this.multiTexture) {
 			var type = 8;
 			var check = function(i, j) {
-				return map.checkCoords(i, j) && !map.get(i, j).solid;
+				return this.map.checkCoords(i, j) && !this.map.get(i, j).solid;
 			}
 			var x = this.physics.rpos.x;
 			var y = this.physics.rpos.y;
@@ -670,17 +751,19 @@ class Block {
 }
 
 class Chunk {
-	constructor(rpos) {
+	constructor(rpos, map) {
 		this.physics = new PhysicPrimitive();
 		this.physics.rscale = new Vector2(chunkSize, chunkSize);
 		this.physics.rpos = rpos;
 		this.physics.size = new Vector2(chunkSize, chunkSize);
 		this.chunk = [];
+		this.map = map;
 		for(let i = 0; i < chunkSize; i++) {
 			this.chunk.push([]);
 			for(let j = 0; j < chunkSize; j++) {
 				this.chunk[i].push(new Block());
 				this.chunk[i][j].physics.rpos = new Vector2(i, j).add(this.physics.pos);
+				this.chunk[i][j].map = this.map;
 			}
 		}
 	}
@@ -778,7 +861,7 @@ class GameMap {
 		for(let i = 0; i < mapSize.x / chunkSize; i++) {
 			this.map.push([]);
 			for(let j = 0; j < mapSize.y / chunkSize; j++) {
-				this.map[i].push(new Chunk(new Vector2(i, j)));
+				this.map[i].push(new Chunk(new Vector2(i, j), this));
 			}
 		}
 	}
@@ -880,12 +963,16 @@ class GameMap {
 		this.getChunk().set(i, j, val);	
 	}
 
-	emitChunk(i, j, socket = undefined) {
-		if(!socket) {
-			io.to('users').emit('map-chunk', this.map[i][j]);
+	emitChunk(i, j, socket) {
+		if(socket.id == undefined) {
+			setTimeout((socket) => {
+				io.to('room' + socket).emit('map-chunk', this.map[i][j]);
+			}, 0);
 		}
 		else {
-			socket.emit('map-chunk', this.map[i][j]);
+			setTimeout((socket) => {
+				socket.emit('map-chunk', this.map[i][j]);
+			}, 0);
 		}
 	}
 
@@ -893,7 +980,7 @@ class GameMap {
 		var self = this;
 		this.map.forEach(function(row, i, arr) {
 			row.forEach(function(item, j, rarr) {
-				self.emitChunk(i, j);
+				self.emitChunk(i, j, socket);
 			});
 		});
 	}
@@ -936,12 +1023,77 @@ class GameMap {
 	}
 }
 
-var map = undefined;
+class Room {
+	constructor(id) {
+		this.id = id;
+
+		this.map = new GameMap();
+		this.players = [];
+		this.viruses = [];
+		this.network = [];
+		this.cntSides = [0, 0];
+		this.started = false;
+	}
+
+	start() {
+		var self = this;
+		this.network.forEach(function(item, i, arr) {
+			if(item.side == 0) {
+				var player = new Player(item, self.map);
+				self.players.push(player);
+			}
+			else {
+				//TODO: add virus
+			}
+		});
+		this.map.generateMap();
+		this.started = true;
+		io.to('room' + this.id).emit('gameStarted');
+	}
+
+	emitRoom() {
+		var data = [];
+		this.network.forEach(function(net, i, arr) {
+			var item = {};
+			item.id = net.id;
+			item.name = net.name;
+			item.side = net.side;
+			data.push(item);
+		});
+		io.to('room' + this.id).emit('updateRoom', data);
+	}
+
+	tick(dt) {
+		var data = [];
+		this.players.forEach(function (id, i, arr) {
+			var player = players[id];
+			if(player == undefined || player.network.left) return;
+			//Processing physics
+			player.tickUpdate(dt);
+
+			player.energy += dt * 2;
+			//Data for transfer
+			var iData = {};
+			iData.id = player.id;
+			iData.physics = player.physics;
+			iData.name = player.network.name;
+			iData.workers = player.workers;
+			iData.energy = player.energy;
+			iData.stone = player.stone;
+			iData.iron = player.iron;
+			iData.hp = player.hp;
+			data.push(iData);
+		});
+		this.map.update(dt);
+		//TODO: add virus
+
+		io.to('room' + this.id).emit('update', data);
+	}
+}
 
 function setup() {
-	map = new GameMap();
-	map.generateMap();
 	setInterval(tick, 16);
+	rooms.push(new Room(0));
 	log("Server started successfully");
 }
 
@@ -979,44 +1131,18 @@ function loadFiles() {
 
 loadFiles();
 
-var fpsTime = 0;
-var fps = 0;
+var rooms = [];
 
 function tick() {
 	var curTime = new Date().getTime();
 	var dt = (curTime - lastTickTime) / 1000;
 	lastTickTime = curTime;
-	fpsTime += dt;
-	fps++;
-	if(fpsTime >= 1) {
-		fps = 0;
-		fpsTime = 0;
-	}
 	if(dt > 0.064) {
 		var ticksSkipped = Math.ceil(dt / 0.016);
 		log("Server overload: skipping " + ticksSkipped + " ticks", 1);
 		dt = 0.064;
 	}
-	var data = [];
-	players.forEach(function (player, i, arr) {
-		if(player == undefined || player.network.left) return;
-		//Processing physics
-		player.tickUpdate(dt);
-
-		player.energy += dt * 2;
-		//Data for transfer
-		var iData = {};
-		iData.id = player.id;
-		iData.physics = player.physics;
-		iData.name = player.network.nickname;
-		iData.workers = player.workers;
-		iData.energy = player.energy;
-		iData.stone = player.stone;
-		iData.iron = player.iron;
-		iData.hp = player.hp;
-		data.push(iData);
+	rooms.forEach(function(item, i, arr) {
+		item.tick(dt);
 	});
-	map.update(dt);
-
-	io.to('users').emit('update', data);
 }

@@ -2,20 +2,17 @@ var socket = io.connect(window.location.href, {secure: true});
 var token = undefined;
 var chunksGot = 0;
 
-function retrieveToken() {
-	var cookie = decodeURIComponent(document.cookie);
-	if(cookie && cookie.length) {
-		cookie = cookie.split(';');
-		token = cookie[0].split('=')[1];
-	}
+function setup() {
+	token = Cookies.get('token');
+	socket.emit('requestRooms');
 }
 
-retrieveToken();
+setup();
 
 socket.on('reg-error', function(errText) {
 	let errDiv = document.getElementById('errorText');
 	errDiv.innerHTML = errText;
-	let nickDiv = document.getElementById('nicknameForm');
+	let nickDiv = document.getElementById('loginForm');
 	nickDiv.style.display = 'inline';
 	deactivateGame();
 });
@@ -27,8 +24,10 @@ socket.on('reg-success', function(key, id, name) {
 	myId = id;
 	var date = new Date();
 	date.setTime(date.getTime() + 60 * 60 * 1000);
-	document.cookie = 'token=' + token + ';expires=' + date + ';path=/';
-	activateGame();
+	Cookies.set('token', token);
+	socket.emit('requestRooms', token);
+	document.getElementById('loginForm').style.display = 'none';
+	document.getElementById('rooms').style.display = 'inline';
 });
 
 socket.on('reg-disconnected', function(id) {
@@ -39,6 +38,27 @@ socket.on('reg-disconnected', function(id) {
 		players.get(id).nameSprite.unstageFromScene(objects);
 		players.delete(id);
 	}
+});
+
+socket.on('rooms', function(data) {
+	var ol = document.getElementById('serverForm');
+	data.forEach(function(item, i, arr) {
+		var li = document.createElement('li');
+		li.setAttribute('id', 'room' + item.id);
+		li.onclick = function() {
+			chooseRoom(item.id);
+		}
+		li.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+		if(item.started) {
+			li.className += ' list-group-item-danger'
+		}
+		var span = document.createElement('span');
+		span.className = 'badge badge-primary badge-pill';
+		span.appendChild(document.createTextNode((item.players[0] + item.players[1]) + ''));
+		li.appendChild(document.createTextNode('Room ' + (item.id + 1)));
+		li.appendChild(span);
+		ol.appendChild(li);
+	});
 });
 
 socket.on('update', function(data) {
@@ -60,23 +80,46 @@ socket.on('requestToken', function() {
 	}
 });
 
+socket.on('updateRoom', function(data) {
+	document.getElementById('rooms').style.display = 'none';
+	document.getElementById('room').style.display = 'grid';
+	var olp = document.getElementById('roomPlayers');
+	var olv = document.getElementById('roomViruses');
+	data.forEach(function(item, i, arr) {
+		var li = document.createElement('li');
+		li.appendChild(document.createTextNode(item.name));
+		li.className = 'list-group-item';
+		if(item.side == 0) {
+			olp.appendChild(li);
+		}
+		else {
+			olv.appendChild(li);
+		}
+	});
+});
+
 function play() {
 	var nicknameInput = document.getElementsByName('nickname')[0].value;
-	socket.emit('registration', nicknameInput);
+	socket.emit('registration', nicknameInput, 0);
 }
 
 function activateGame() {
-	document.getElementById('nicknameForm').style.display = 'none';
+	document.getElementById('loginForm').style.display = 'none';
 	document.getElementById('inventory').style.display = 'inline';
-	isGameActive = 1;
+	isGameActive = true;
 	enableGame();
 }
 
 function deactivateGame() {
-	document.getElementById('nicknameForm').style.display = 'inline';
+	document.getElementById('loginForm').style.display = 'inline';
 	document.getElementById('inventory').style.display = 'none';
-	isGameActive = 0;
+	isGameActive = false;
 	if(screenStage) {
 		screenStage.removeChild(gameScene);
 	}
+	map = new GameMap();
+}
+
+function chooseRoom(id) {
+	socket.emit('joinRoom', token, id);
 }

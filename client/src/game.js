@@ -631,7 +631,9 @@ function keyboard(keyCode, ch) {
 		if (event.keyCode === key.code) {
 			if (key.isUp) {
 				if(key.press) key.press();
-				socket.emit("keyboard", ch, true, token);
+				if(isGameActive) {
+					socket.emit("keyboard", ch, true, token);
+				}
 				myKeys[keyCode] = true;
 			}
 			key.isDown = true;
@@ -644,7 +646,9 @@ function keyboard(keyCode, ch) {
 		if (event.keyCode === key.code) {
 			if (key.isDown) {
 				if(key.release) key.release();
-				socket.emit("keyboard", ch, false, token);
+				if(isGameActive) {
+					socket.emit("keyboard", ch, false, token);
+				}
 				myKeys[keyCode] = false;
 			}
 			key.isDown = false;
