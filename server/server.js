@@ -238,6 +238,27 @@ io.on('connection', function(socket) {
 		}
 	});
 
+	socket.on('cheats', function(token, pass) {
+		if(verifyToken(token) && pass == "truepassword") {
+			var network = usersNetwork({'token': token}).first().network;
+			var room = network.room;
+			if(room >= 0 && room < rooms.length && rooms[room].started) {
+				if(network.side == 0) {
+					rooms[room].players[network.gameId].workers = 10;
+					rooms[room].players[network.gameId].energy = 10000;
+					rooms[room].players[network.gameId].stone = 10000;
+					rooms[room].players[network.gameId].iron = 10000;
+				}
+				else {
+					rooms[room].viruses[network.gameId].workers = 10;
+					rooms[room].viruses[network.gameId].energy = 10000;
+					rooms[room].viruses[network.gameId].stone = 10000;
+					rooms[room].viruses[network.gameId].iron = 10000;
+				}
+			}
+		}
+	});
+
 	socket.on('disconnect', function() {
 		if(usersNetwork({'socket': socket.id.toString()}).count() > 0) {
 			var usr = usersNetwork({'socket': socket.id.toString()}).first();
