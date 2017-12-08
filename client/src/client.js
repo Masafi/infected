@@ -39,23 +39,21 @@ socket.on('reg-disconnected', function(id) {
 });
 
 socket.on('rooms', function(data) {
-	if(!isGameStarted) {
-		$('#rooms-list').empty();
-		data.forEach(function(item, i, arr) {
-			var element = $('#rooms-list-item > *').clone();
-			element.prepend('Room ' + (item.id + 1));
-			element.find('span').text((item.players[0] + item.players[1]).toString());
-			element.click(function() {
-				chooseRoom(item.id);
-			});
-			if(item.started) {
-				element.addClass('active');
-				element.find('span').removeClass('badge-primary');
-				element.find('span').addClass('badge-light text-primary');
-			}
-			$('#rooms-list').append(element);
+	$('#rooms-list').empty();
+	data.forEach(function(item, i, arr) {
+		var element = $('#rooms-list-item > *').clone();
+		element.prepend('Room ' + (item.id + 1));
+		element.find('span').text((item.players[0] + item.players[1]).toString());
+		element.click(function() {
+			chooseRoom(item.id);
 		});
-	}
+		if(item.started) {
+			element.addClass('active');
+			element.find('span').removeClass('badge-primary');
+			element.find('span').addClass('badge-light text-primary');
+		}
+		$('#rooms-list').append(element);
+	});
 });
 
 socket.on('update', function(data) {
@@ -122,6 +120,7 @@ function activateGame() {
 function deactivateGame(force) {
 	if(force) $('#login-form').show();
 	else $('rooms-form').show();
+	socket.emit('requestRooms', token);
 	document.getElementById('inventory').style.display = 'none';
 	isGameActive = false;
 	isGameStarted = false;
@@ -139,6 +138,7 @@ function leave() {
 	socket.emit('leaveRoom', token);
 	$('#players-form').hide();
 	$('#rooms-form').show();
+	socket.emit('requestRooms', token);
 }
 
 var isReady = false;

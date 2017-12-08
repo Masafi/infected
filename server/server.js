@@ -58,6 +58,18 @@ function reqId() {
 	return i;
 }
 
+function emitRooms() {
+	var data = [];
+	rooms.forEach(function(room, i, arr) {
+		var obj = {};
+		obj.id = room.id;
+		obj.players = room.cntSides;
+		obj.started = room.started;
+		data.push(obj);
+	});
+	io.to('lobby').emit('rooms', data);
+}
+
 ///Sockets behavior
 io.on('connection', function(socket) {
 	socket.emit('requestToken');
@@ -74,6 +86,9 @@ io.on('connection', function(socket) {
 			if(room >= 0 && room < rooms.length && rooms[room].started) {
 				socket.join('room' + room);
 				socket.emit('gameStarted');
+			}
+			else {
+				socket.join('lobby');
 			}
 			log(usr.network.name + " rejoined the game. Total: " + usersNetwork().count());
 		}
@@ -105,6 +120,8 @@ io.on('connection', function(socket) {
 			}
 			network.side = side;
 			network.makeToken();
+			socket.join('users');
+			socket.join('lobby');
 			usersNetwork.insert({'id': network.id, 'socket': socket.id.toString(), 'token': network.token, 'network': network});
 			socket.emit('reg-success', network.token, network.id, name);
 			log(name +  " (" + network.id + ") joined the game. Total: " + usersNetwork().count());
@@ -122,7 +139,9 @@ io.on('connection', function(socket) {
 				rooms[room].network.push(network);
 				rooms[room].cntSides[network.side]++;
 				socket.join('room' + room);
+				socket.leave('lobby');
 				rooms[room].emitRoom();
+				emitRooms();
 			}
 		}
 		else {
@@ -141,7 +160,9 @@ io.on('connection', function(socket) {
 				network.ready = false;
 				rooms[room].cntSides[network.side]--;
 				socket.leave('room' + room);
+				socket.join('lobby');
 				rooms[room].emitRoom();
+				emitRooms();
 			}
 		}
 		else {
@@ -271,7 +292,9 @@ io.on('connection', function(socket) {
 				network.room = -1;
 				network.roomId = -1;
 				socket.leave('room' + room);
+				socket.join('lobby');
 				rooms[room].emitRoom();
+				emitRooms();
 			}
 			log(network.name + " left the game. Total: " + usersNetwork().count());
 		}
@@ -1105,7 +1128,10 @@ class GameMap {
 				nq.push(item);
 			}
 			if(res.changed) {
-				var pl = rooms[self.room].players[item.info];
+				var net = usersNetwork({id: item.info}).first().network;
+				var pl;
+				if(net.side == 0) pl = rooms[net.room].players[net.gameId];
+				else pl = rooms[net.room].viruses[net.gameId];
 				if(pl) {
 					pl.workers++;
 					pl.stone += stoneCost;
@@ -1133,13 +1159,15 @@ class Room {
 	}
 
 	restart() {
-		this.map = new GameMap(id);
+		this.map = new GameMap(this.id);
 		this.players = [];
 		this.viruses = [];
 		this.network = [];
 		this.cntSides = [0, 0];
 		this.started = false;
 		this.startedTime = new Date();
+		this.online = 0;
+		emitRooms();
 	}
 
 	start() {
@@ -1159,6 +1187,7 @@ class Room {
 		this.map.generateMap();
 		this.started = true;
 		io.to('room' + this.id).emit('gameStarted');
+		emitRooms();
 	}
 
 	emitRoom() {
@@ -1185,10 +1214,11 @@ class Room {
 	}
 
 	updateGame(dt) {
-		var online = 0;
+		this.online = 0;
 		var data = [];
+		var self = this;
 		this.players.forEach(function (player, i, arr) {
-			online += !player.left;
+			self.online += !player.network.left;
 			//Processing physics
 			player.tickUpdate(dt);
 
@@ -1206,7 +1236,7 @@ class Room {
 			data.push(iData);
 		});
 		this.viruses.forEach(function (player, i, arr) {
-			online += !player.left;
+			self.online += !player.network.left;
 			//Processing physics
 			player.tickUpdate(dt);
 
@@ -1224,7 +1254,7 @@ class Room {
 			data.push(iData);
 		});
 		this.map.update(dt);
-		if(!online || new Date() - this.startedTime >= 1000 * 60 * 15) {
+		if(!this.online || new Date() - this.startedTime >= 1000 * 60 * 15) {
 			io.to('room' + this.id).emit('gameOver');
 			this.network.forEach(function(item, i, arr) {
 				item.room = -1;
@@ -1232,6 +1262,7 @@ class Room {
 				item.ready = false;
 			});
 			this.restart();
+			return;
 		}
 
 		io.to('room' + this.id).emit('update', data);
