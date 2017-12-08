@@ -23,6 +23,11 @@ canvas {
 	transform: translate(-50%, -50%);
 }
 
+.horizontalAligned {
+	width: 50%;
+	margin: 0 auto;
+}
+
 .hidden {
 	display: none;
 }

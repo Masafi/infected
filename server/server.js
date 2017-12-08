@@ -70,6 +70,12 @@ io.on('connection', function(socket) {
 			usr.socket = socket.id.toString();
 			usr.network.left = false;
 			socket.emit('reg-success', token, usr.id, usr.network.name);
+			var room = usr.network.room;
+			if(room >= 0 && room < rooms.length && rooms[room].started) {
+				socket.join('room' + room);
+				socket.emit('gameStarted');
+			}
+			log(usr.network.name + " rejoined the game. Total: " + usersNetwork().count());
 		}
 	});
 
@@ -130,6 +136,7 @@ io.on('connection', function(socket) {
 				rooms[room].network.splice(network.roomId, 1);
 				network.room = -1;
 				network.roomId = -1;
+				network.ready = false;
 				rooms[room].cntSides[network.side]--;
 				socket.leave('room' + room);
 				rooms[room].emitRoom();
@@ -140,9 +147,36 @@ io.on('connection', function(socket) {
 		}
 	});
 
+	socket.on('switchSide', function(token) {
+		if(verifyToken(token)) {
+			var network = usersNetwork({'token': token}).first().network;
+			var room = network.room;
+			var curside = network.side;
+			var toside = 1 - curside;
+			if(room >= 0 && room < rooms.length && !rooms[room].started && rooms[room].cntSides[toside] < mxPlayers) {
+				rooms[room].cntSides[toside]++;
+				rooms[room].cntSides[curside]--;
+				network.side = toside;
+				rooms[room].emitRoom();
+			}
+		}
+	});
+
+	socket.on('ready', function(token, val) {
+		if(verifyToken(token)) {
+			var network = usersNetwork({'token': token}).first().network;
+			var room = network.room;
+			if(room >= 0 && room < rooms.length) {
+				network.ready = val;
+				rooms[room].emitRoom();
+			}
+		}
+	});
+
 	socket.on('requestChunk', function(i, j, token) {
 		if(verifyToken(token)) {
 			var network = usersNetwork({'token': token}).first().network;
+			var room = network.room;
 			if(room >= 0 && room < rooms.length && rooms[room].started) {
 				rooms[room].map.emitChunk(i, j, socket);
 			}
@@ -169,6 +203,7 @@ io.on('connection', function(socket) {
 	socket.on('keyboard', function (key, state, token) {
 		if(verifyToken(token)) {
 			var network = usersNetwork({'token': token}).first().network;
+			var room = network.room;
 			if(room >= 0 && room < rooms.length && rooms[room].started) {
 				rooms[room].players[network.roomId].keys[key] = state;
 			}
@@ -181,6 +216,7 @@ io.on('connection', function(socket) {
 	socket.on('mouse', function (pos, button, token) {
 		if(verifyToken(token)) {
 			var network = usersNetwork({'token': token}).first().network;
+			var room = network.room;
 			if(room >= 0 && room < rooms.length && rooms[room].started) {
 				rooms[room].players[network.roomId].mousePos = new Vector2(pos.x, pos.y);
 				rooms[room].players[network.roomId].mouseUpdated = true;
@@ -198,7 +234,7 @@ io.on('connection', function(socket) {
 			var network = usr.network;
 			network.left = true;
 			var room = network.room;
-			if(room >= 0 && room < rooms.length) {
+			if(room >= 0 && room < rooms.length && !rooms[room].started) {
 				rooms[room].network.splice(network.roomId, 1);
 				rooms[room].cntSides[network.side]--;
 				network.room = -1;
@@ -281,6 +317,7 @@ class NetworkPrimitive {
 		this.roomId = -1;
 		this.side = 0;
 		this.left = false;
+		this.ready = false;
 	}
 
 	makeToken() {
@@ -513,7 +550,7 @@ class Player {
 		this.id = network.id;
 
 		this.physics = new PhysicPrimitive();
-		this.physics.pos = new Vector2(((id + 1) * 1000) % (mapSize.x * CellSize.x), 0);
+		this.physics.pos = new Vector2(((network.id + 1) * 1000) % (mapSize.x * CellSize.x), 0);
 		this.physics.size = new Vector2(15, 21);
 		this.physics.acc = new Vector2(0, this.physics.g);
 		this.physics.onCollision = this.onCollision;
@@ -607,9 +644,10 @@ class Player {
 		iPos.x = Math.floor(iPos.x);
 		iPos.y = Math.floor(iPos.y);
 		iPos = this.map.getChunkID(iPos.x, iPos.y);
+		var self = this;
 		var checkAdd = function (ip) {
 			if(ip.x >= 0 && ip.y >= 0 && ip.x < mapSize.x / chunkSize && ip.y < mapSize.y / chunkSize) {
-				this.map.map[ip.x][ip.y].getStaticObj(collisionObjects);
+				self.map.map[ip.x][ip.y].getStaticObj(collisionObjects);
 			}
 		}
 		checkAdd(iPos.add(new Vector2(0, 0)));
@@ -662,7 +700,8 @@ class Virus {
 }
 
 class Block {
-	constructor() {
+	constructor(map) {
+		this.map = map;
 		this.physics = new PhysicPrimitive();
 		this.physics.size = new Vector2(0, 0).add(CellSize);
 		this.id = 0;
@@ -680,7 +719,6 @@ class Block {
 		this.isBreaking = false;
 		this.breakTime = 0;
 		this.breakTimer = 0;
-		this.map = undefined;
 	}
 
 	update(dt) {
@@ -709,8 +747,9 @@ class Block {
 	updateMultiTexture() {
 		if(this.multiTexture) {
 			var type = 8;
+			var self = this;
 			var check = function(i, j) {
-				return this.map.checkCoords(i, j) && !this.map.get(i, j).solid;
+				return self.map.checkCoords(i, j) && !self.map.get(i, j).solid;
 			}
 			var x = this.physics.rpos.x;
 			var y = this.physics.rpos.y;
@@ -761,9 +800,8 @@ class Chunk {
 		for(let i = 0; i < chunkSize; i++) {
 			this.chunk.push([]);
 			for(let j = 0; j < chunkSize; j++) {
-				this.chunk[i].push(new Block());
-				this.chunk[i][j].physics.rpos = new Vector2(i, j).add(this.physics.pos);
-				this.chunk[i][j].map = this.map;
+				this.chunk[i].push(new Block(map));
+				this.chunk[i][j].physics.rpos = new Vector2(i, j).add(this.physics.pos);1
 			}
 		}
 	}
@@ -784,6 +822,27 @@ class Chunk {
 				item.updateMultiTexture();
 			})
 		});
+	}
+
+	generateData() {
+		var data = [];
+		this.chunk.forEach(function(row, i, arr) {
+			data.push([]);
+			row.forEach(function(item, j, rarr) {
+				var obj = {};
+				obj.physics = item.physics;
+				obj.solid = item.solid;
+				obj.breakable = item.breakable;
+				obj.breakTime = item.breakTime;
+				obj.name = item.name;
+				obj.textureOffset = item.textureOffset;
+				obj.multiTexture = item.multiTexture;
+				obj.multiTextureId = item.multiTextureId;
+				obj._id = item.id;
+				data[i].push(obj);
+			});
+		});
+		return data;
 	}
 
 	get(i, j) {
@@ -965,14 +1024,10 @@ class GameMap {
 
 	emitChunk(i, j, socket) {
 		if(socket.id == undefined) {
-			setTimeout((socket) => {
-				io.to('room' + socket).emit('map-chunk', this.map[i][j]);
-			}, 0);
+			io.to('room' + socket).emit('map-chunk', this.map[i][j]);
 		}
 		else {
-			setTimeout((socket) => {
-				socket.emit('map-chunk', this.map[i][j]);
-			}, 0);
+			socket.emit('map-chunk', {chunk: this.map[i][j].generateData(), physics: this.map[i][j].physics});
 		}
 	}
 
@@ -1058,16 +1113,25 @@ class Room {
 			item.id = net.id;
 			item.name = net.name;
 			item.side = net.side;
+			item.ready = net.ready;
 			data.push(item);
 		});
 		io.to('room' + this.id).emit('updateRoom', data);
 	}
 
-	tick(dt) {
+	updatePreGame(dt) {
+		var allReady = true;
+		this.network.forEach(function(net, i, arr) {
+			allReady = allReady && net.ready;
+		});
+		if(allReady && this.network.length >= 1) {
+			this.start();
+		}
+	}
+
+	updateGame(dt) {
 		var data = [];
-		this.players.forEach(function (id, i, arr) {
-			var player = players[id];
-			if(player == undefined || player.network.left) return;
+		this.players.forEach(function (player, i, arr) {
 			//Processing physics
 			player.tickUpdate(dt);
 
@@ -1088,6 +1152,15 @@ class Room {
 		//TODO: add virus
 
 		io.to('room' + this.id).emit('update', data);
+	}
+
+	tick(dt) {
+		if(!this.started) {
+			this.updatePreGame(dt);
+		}
+		else {
+			this.updateGame(dt);
+		}
 	}
 }
 

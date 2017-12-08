@@ -26,20 +26,26 @@
 			</div>
 		</div>
 		<div id="rooms" class="centerAligned hidden" style="height: 50%">
-			<h1>Select a room:</h1>
+			<h1 style="color: #2b390e">Select a room:</h1>
 			<ul id="serverForm" class="list-group">
+				
 			</ol>
 		</div>
 		<div id="room" class="centerAligned hidden roomViewer">
 			<div class="inline roomLeft">
-				<h1>Humans</h1>
+				<h1 style="color: #2b390e">Humans</h1>
 				<ol id="roomPlayers" class="list-group">
 				</ol>
 			</div>
 			<div class="inline roomRight">
-				<h1>Viruses</h1>
+				<h1 style="color: #2b390e">Viruses</h1>
 				<ol id="roomViruses" class="list-group">
 				</ol>
+			</div>
+			<div style="width: 100%">
+				<button type="button" name="readyBtn" id="readyBtn" onclick="ready()">Ready</button>
+				<button type="button" name="leaveBtn" id="leaveBtn" onclick="leave()">Leave</button>
+				<button type="button" name="switchBtn" id="switchBtn" onclick="switchSide()">Switch</button>
 			</div>
 		</div>
 		<div id="loadingForm" class="centerAligned hidden">

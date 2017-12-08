@@ -682,6 +682,7 @@ function mouseMoved(event, canvas) {
 
 function enableGame() {
 	if(isGameActive && isGameLoaded) {
+		console.log("Game started!");
 		screenStage.addChild(gameScene);
 	}
 }
