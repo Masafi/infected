@@ -1,6 +1,7 @@
-var socket = io.connect(window.location.href, {secure: true});
+var socket = io.connect(window.location.href, { secure: true });
 var token = undefined;
 var chunksGot = 0;
+var team = false;
 
 function setup() {
 	token = Cookies.get('token');
@@ -10,10 +11,8 @@ function setup() {
 setup();
 
 socket.on('reg-error', function(errText) {
-	let errDiv = document.getElementById('errorText');
-	errDiv.innerHTML = errText;
-	let nickDiv = document.getElementById('loginForm');
-	nickDiv.style.display = 'inline';
+	$('#login-error').html('<b>Error:</b> ' + errText);
+	$('#login-error').show();
 	deactivateGame();
 });
 
@@ -22,16 +21,15 @@ socket.on('reg-success', function(key, id, name) {
 	token = key;
 	myNick = name;
 	myId = id;
-	var date = new Date();
-	date.setTime(date.getTime() + 60 * 60 * 1000);
 	Cookies.set('token', token);
 	socket.emit('requestRooms', token);
-	document.getElementById('loginForm').style.display = 'none';
-	document.getElementById('rooms').style.display = 'inline';
+	$('#login-input').removeClass('is-invalid');
+	$('#login-form').hide();
+	$('#rooms-form').show();
 });
 
 socket.on('reg-disconnected', function(id) {
-	if(players.has(id)) {
+	if (players.has(id)) {
 		players.get(id).graphics.forEach(function(item, i, arr) {
 			item.unstageFromScene(objects);
 		});
@@ -41,27 +39,23 @@ socket.on('reg-disconnected', function(id) {
 });
 
 socket.on('rooms', function(data) {
-	var ol = document.getElementById('serverForm');
-	data.forEach(function(item, i, arr) {
-		var li = document.createElement('li');
-		li.setAttribute('id', 'room' + item.id);
-		li.onclick = function() {
-			chooseRoom(item.id);
-		}
-		li.className = 'list-group-item d-flex justify-content-between align-items-center';
-		if(item.started) {
-			li.className += ' list-group-item-danger';
-		}
-		else {
-			li.className += ' list-group-item-action';
-		}
-		var span = document.createElement('span');
-		span.className = 'badge badge-primary badge-pill';
-		span.appendChild(document.createTextNode((item.players[0] + item.players[1]) + ''));
-		li.appendChild(document.createTextNode('Room ' + (item.id + 1)));
-		li.appendChild(span);
-		ol.appendChild(li);
-	});
+	if(!isGameStarted) {
+		$('#rooms-list').empty();
+		data.forEach(function(item, i, arr) {
+			var element = $('#rooms-list-item > *').clone();
+			element.prepend('Room ' + (item.id + 1));
+			element.find('span').text((item.players[0] + item.players[1]).toString());
+			element.click(function() {
+				chooseRoom(item.id);
+			});
+			if(item.started) {
+				element.addClass('active');
+				element.find('span').removeClass('badge-primary');
+				element.find('span').addClass('badge-light text-primary');
+			}
+			$('#rooms-list').append(element);
+		});
+	}
 });
 
 socket.on('update', function(data) {
@@ -78,31 +72,24 @@ socket.on('blockBreaking', function(pos) {
 });
 
 socket.on('requestToken', function() {
-	if(token) {
+	if (token) {
 		socket.emit('returnToken', token);
 	}
 });
 
-socket.on('updateRoom', function(data) {
-	document.getElementById('rooms').style.display = 'none';
-	document.getElementById('room').style.display = 'grid';
-	var olp = document.getElementById('roomPlayers');
-	var olv = document.getElementById('roomViruses');
-	olp.innerHTML = "";
-	olv.innerHTML = "";
+socket.on('updateRoom', function(data, id) {
+	$('#players-list-humans > *:not(:first)').remove();
+	$('#players-list-virus > *:not(:first)').remove();
+	$('#ready-button').removeClass('disabled');
+	$('#rooms-form').hide();
+	$('#players-form').show();
+	$('#players-form').find('h4').text('Room ' + (id + 1));
 	data.forEach(function(item, i, arr) {
-		var li = document.createElement('li');
-		li.appendChild(document.createTextNode(item.name));
-		li.className = 'list-group-item';
-		if(item.ready) {
-			li.className += ' list-group-item-success'
-		}
-		if(item.side == 0) {
-			olp.appendChild(li);
-		}
-		else {
-			olv.appendChild(li);
-		}
+		var parent = item.side ? $('#players-list-virus') : $('#players-list-humans');
+		var element = $('#players-list-item > *').clone();
+		element.prepend(item.name);
+		if(item.ready) element.find('span').show();
+		parent.append(element);
 	});
 });
 
@@ -110,25 +97,30 @@ socket.on('gameStarted', function() {
 	activateGame();
 });
 
+socket.on('blockUpdate', function(data) {
+	map.updateBlockData(data);
+});
+
 function play() {
-	var nicknameInput = document.getElementsByName('nickname')[0].value;
-	socket.emit('registration', nicknameInput, 0);
+	nickname = $('#login-input').val();
+	socket.emit('registration', nickname, +team);
 }
 
 function activateGame() {
-	document.getElementById('loginForm').style.display = 'none';
-	document.getElementById('room').style.display = 'none';
-	document.getElementById('rooms').style.display = 'none';
+	$('#rooms-form').hide();
+	$('#login-form').hide();
+	$('#players-form').hide();
 	document.getElementById('inventory').style.display = 'inline';
 	isGameActive = true;
 	enableGame();
 }
 
 function deactivateGame() {
-	document.getElementById('loginForm').style.display = 'inline';
+	$('#login-form').show();
 	document.getElementById('inventory').style.display = 'none';
 	isGameActive = false;
-	if(screenStage) {
+	isGameStarted = false;
+	if (screenStage) {
 		screenStage.removeChild(gameScene);
 	}
 	map = new GameMap();
@@ -140,8 +132,8 @@ function chooseRoom(id) {
 
 function leave() {
 	socket.emit('leaveRoom', token);
-	document.getElementById('rooms').style.display = 'inline';
-	document.getElementById('room').style.display = 'none';
+	$('#players-form').hide();
+	$('#rooms-form').show();
 }
 
 var isReady = false;
@@ -154,3 +146,26 @@ function ready() {
 function switchSide() {
 	socket.emit('switchSide', token);
 }
+
+$(document).ready(function() {
+	// Обработчик кнопки авторизации
+	$('#login-button').click(play);
+
+	// Выбор команды
+	function toggleTeam() {
+		team = !team;
+		$('#login-humans-button').toggle();
+		$('#login-virus-button').toggle();
+	}
+	$('#login-humans-button').click(toggleTeam);
+	$('#login-virus-button').click(toggleTeam);
+
+	// Выход с хаты
+	$('#leave-button').click(leave);
+
+	// Смена команды
+	$('#switch-team-button').click(switchSide);
+
+	// Кнопка ready
+	$('#ready-button').click(ready);
+});

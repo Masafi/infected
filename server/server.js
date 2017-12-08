@@ -100,7 +100,7 @@ io.on('connection', function(socket) {
 			network.name = name;
 			network.id = reqId();
 			network.socket = socket;
-			if(side != 1 || side != 0) {
+			if(side != 1 && side != 0) {
 				side = 0;
 			}
 			network.side = side;
@@ -114,7 +114,9 @@ io.on('connection', function(socket) {
 	socket.on('joinRoom', function(token, room) {
 		if(verifyToken(token)) {
 			var network = usersNetwork({'token': token}).first().network;
-			if(room >= 0 && room < rooms.length && network.room == -1 && !rooms[room].started && rooms[room].cntSides[network.side] < mxPlayers) {
+			if(room >= 0 && room < rooms.length && network.room == -1 && !rooms[room].started && (rooms[room].cntSides[0] < mxPlayers || rooms[room].cntSides[1] < mxPlayers)) {
+				var side = (rooms[room].cntSides[0] <= mxPlayers ? 0 : 1);
+				network.side = side;
 				network.room = room;
 				network.roomId = rooms[room].network.length;
 				rooms[room].network.push(network);
@@ -205,7 +207,8 @@ io.on('connection', function(socket) {
 			var network = usersNetwork({'token': token}).first().network;
 			var room = network.room;
 			if(room >= 0 && room < rooms.length && rooms[room].started) {
-				rooms[room].players[network.roomId].keys[key] = state;
+				if(network.side == 0) rooms[room].players[network.gameId].keys[key] = state;
+				else rooms[room].viruses[network.gameId].keys[key] = state;
 			}
 		}
 		else {
@@ -218,9 +221,16 @@ io.on('connection', function(socket) {
 			var network = usersNetwork({'token': token}).first().network;
 			var room = network.room;
 			if(room >= 0 && room < rooms.length && rooms[room].started) {
-				rooms[room].players[network.roomId].mousePos = new Vector2(pos.x, pos.y);
-				rooms[room].players[network.roomId].mouseUpdated = true;
-				rooms[room].players[network.roomId].mouseButton = button;
+				if(network.side == 0) {
+					rooms[room].players[network.gameId].mousePos = new Vector2(pos.x, pos.y);
+					rooms[room].players[network.gameId].mouseUpdated = true;
+					rooms[room].players[network.gameId].mouseButton = button;
+				}
+				else {
+					rooms[room].viruses[network.gameId].mousePos = new Vector2(pos.x, pos.y);
+					rooms[room].viruses[network.gameId].mouseUpdated = true;
+					rooms[room].viruses[network.gameId].mouseButton = button;
+				}
 			}
 		}
 		else {
@@ -318,6 +328,7 @@ class NetworkPrimitive {
 		this.side = 0;
 		this.left = false;
 		this.ready = false;
+		this.gameId = -1;
 	}
 
 	makeToken() {
@@ -554,6 +565,7 @@ class Player {
 		this.physics.size = new Vector2(15, 21);
 		this.physics.acc = new Vector2(0, this.physics.g);
 		this.physics.onCollision = this.onCollision;
+		this.coef = new Vector2(1, 1);
 		
 		this.network = network;
 		this.map = map;
@@ -571,14 +583,14 @@ class Player {
 
 	processKeys(dt) {
 		if (this.keys['a']) {
-			this.physics.vel.x += Math.min(0, Math.max(-100 * 60 * dt, -150 * 60 * dt - this.physics.vel.x));
+			this.physics.vel.x += this.coef.x * Math.min(0, Math.max(-100 * 60 * dt, -150 * 60 * dt - this.physics.vel.x));
 		}
 		else if (this.keys['d']) {
-			this.physics.vel.x += Math.max(0, Math.min(100 * 60 * dt, 150 * 60 * dt - this.physics.vel.x));
+			this.physics.vel.x += this.coef.x * Math.max(0, Math.min(100 * 60 * dt, 150 * 60 * dt - this.physics.vel.x));
 		}
 
 		if ((this.keys['w'] || this.keys[' ']) && this.physics.standing) {
-			this.physics.vel.y = -400;
+			this.physics.vel.y = this.coef.y * -400;
 		}
 		
 		if(this.mouseUpdated) {
@@ -589,10 +601,9 @@ class Player {
 				if(this.map.checkCoords(rpos.x, rpos.y) && this.workers >= 1) {
 					var block = this.map.get(rpos.x, rpos.y);
 					if(block.needBlock || this.energy >= block.energyCost) { 
-						if(block.breakMe()) {
+						if(this.map.breakBlock(rpos.x, rpos.y, this.id)) {
 							this.workers--;
 							if(!block.needBlock) this.energy -= block.energyCost;
-							this.map.updateBlock(rpos.x, rpos.y, [this.id]);
 						}
 					}
 				}
@@ -601,17 +612,14 @@ class Player {
 				if(this.map.checkCoords(rpos.x, rpos.y) && this.workers >= 1 && this.energy >= 5 && this.stone >= 5) {
 					var block = this.map.get(Math.floor(rpos.x), Math.floor(rpos.y));
 					var good = true;
-					players.forEach(function(item, i, arr) {
-						if(good && !item.left && item.physics.intersects(block.physics)) {
-							good = false;
-						}
+					rooms[this.network.room].players.forEach(function(item, i, arr) {
+						good = good && (item.left || !block.physics.intersects(item.physics));
 					});
 					if(good && block.id == 0) {
 						block.id = 2;
 						this.energy -= 5;
 						this.stone -= 5;
-						var chunkid = this.map.getChunkID(Math.floor(rpos.x), Math.floor(rpos.y));
-						this.map.emitChunk(chunkid.x, chunkid.y);
+						this.map.updateBlock(Math.floor(rpos.x), Math.floor(rpos.y));
 					}
 					this.mouseUpdated = false;
 				}
@@ -625,10 +633,7 @@ class Player {
 			this.physics.vel.y = -400;
 			this.hp -= 10;
 			this.hp = Math.max(10, this.hp);
-			var sgn;
-			if(Math.sign(this.physics.vel.x)) sgn = -Math.sign(this.physics.vel.x); 
-			else sgn = Math.sign(2 * this.physics.pos.x + this.physics.size.x - 2 * block.physics.pos.x - block.physics.size.x);
-			this.physics.vel.x += sgn * 125 * 2.5;
+			this.coef.x = 0.1;
 		}
 	}
 
@@ -637,6 +642,8 @@ class Player {
 		this.processKeys(dt);
 		this.physics.vel = this.physics.updateSpeed(dt);
 		this.physics.standing = false;
+		this.coef.x += dt / 2;
+		this.coef.x = Math.min(1, this.coef.x);
 		
 		//Collision
 		var collisionObjects = [];
@@ -678,11 +685,9 @@ class Player {
 }
 
 class Virus {
-	constructor(network) {
+	constructor(network, map) {
 		this.keys = {};
 		this.id = network.id;
-
-		this.block = undefined;
 
 		this.network = network;
 
@@ -694,7 +699,7 @@ class Virus {
 		this.stone = 100;
 		this.iron = 100;
 		this.hp = 100;
-		this.map = undefined;
+		this.map = map;
 		this.room = 0;
 	}
 }
@@ -722,26 +727,35 @@ class Block {
 	}
 
 	update(dt) {
-		var changed = false;
+		var result = {};
+		result.update = false;
+		result.changed = false;
 		if(this.isBreaking) {
 			this.breakTimer += dt;
 			if(this.breakTimer >= this.breakTime) {
 				this.isBreaking = false;
 				this.id = 0;
-				changed = true;
+				result.changed = true;
 			}
 		}
-		return [this.isBreaking, changed];
+		result.update = this.isBreaking;
+		return result;
 	}
 
-	breakMe() {
-		if(this.breakable && !this.isBreaking){
-			this.isBreaking = true;
-			this.breakTimer = 0;
-			io.to('users').emit('blockBreaking', this.physics.rpos);
-			return true;
-		}
-		return false;
+	generateData() {
+		var obj = {};
+		obj.pos = this.physics.pos;
+		obj.rpos = this.physics.rpos;
+		obj.id = this.id;
+		obj.solid = this.solid;
+		obj.solid = this.solid;
+		obj.breakable = this.breakable;
+		obj.breakTime = this.breakTime;
+		obj.name = this.name;
+		obj.textureOffset = this.textureOffset;
+		obj.multiTexture = this.multiTexture;
+		obj.multiTextureId = this.multiTextureId;
+		return obj;
 	}
 
 	updateMultiTexture() {
@@ -829,17 +843,7 @@ class Chunk {
 		this.chunk.forEach(function(row, i, arr) {
 			data.push([]);
 			row.forEach(function(item, j, rarr) {
-				var obj = {};
-				obj.physics = item.physics;
-				obj.solid = item.solid;
-				obj.breakable = item.breakable;
-				obj.breakTime = item.breakTime;
-				obj.name = item.name;
-				obj.textureOffset = item.textureOffset;
-				obj.multiTexture = item.multiTexture;
-				obj.multiTextureId = item.multiTextureId;
-				obj._id = item.id;
-				data[i].push(obj);
+				data[i].push(item.generateData());
 			});
 		});
 		return data;
@@ -914,7 +918,8 @@ var perlinNoise = new function() {
 }
 
 class GameMap {
-	constructor() {
+	constructor(room) {
+		this.room = room;
 		this.map = [];
 		this.updateQueue = [];
 		for(let i = 0; i < mapSize.x / chunkSize; i++) {
@@ -928,7 +933,7 @@ class GameMap {
 	generateMap() {
 		var height = [];
 		var seed = Math.random() * 10;
-		var yOffset = 15;
+		var yOffset = 25;
 		var self = this;		
 		for(let i = 0; i < mapSize.x; i++) {
 			height.push(Math.floor(perlinNoise.noise(i / 10, seed, seed) * maxHeight + 1));
@@ -1022,12 +1027,21 @@ class GameMap {
 		this.getChunk().set(i, j, val);	
 	}
 
-	emitChunk(i, j, socket) {
-		if(socket.id == undefined) {
-			io.to('room' + socket).emit('map-chunk', this.map[i][j]);
+	emitChunk(i, j, socket = undefined) {
+		if(socket == undefined) {
+			io.to('room' + this.room).emit('map-chunk', {chunk: this.map[i][j].generateData(), pos: this.map[i][j].physics._pos});
 		}
 		else {
-			socket.emit('map-chunk', {chunk: this.map[i][j].generateData(), physics: this.map[i][j].physics});
+			socket.emit('map-chunk', {chunk: this.map[i][j].generateData(), pos: this.map[i][j].physics._pos});
+		}
+	}
+
+	emitBlock(i, j, socket = undefined) {
+		if(socket == undefined) {
+			io.to('room' + this.room).emit('blockUpdate', this.get(i, j).generateData());
+		}
+		else {
+			socket.emit('blockUpdate', this.get(i, j).generateData());
 		}
 	}
 
@@ -1040,40 +1054,52 @@ class GameMap {
 		});
 	}
 
-	updateBlock(i, j, info) {
-		this.updateQueue.push([i, j, info]);
+	updateBlock(i, j, info = undefined) {
+		this.updateQueue.push({rpos: new Vector2(i, j), info: info});
+	}
+
+	breakBlock(i, j, id) {
+		var block = this.get(i, j);
+		if(block.breakable && !block.isBreaking){
+			block.isBreaking = true;
+			block.breakTimer = 0;
+			io.to('room' + this.room).emit('blockBreaking', block.physics.rpos);
+			this.updateBlock(i, j, id);
+			return true;
+		}
+		return false;
 	}
 
 	update(dt) {
 		var nq = [];
 		var self = this;
-		this.updateQueue.forEach(function(item, i, arr) {
-			var block = self.get(item[0], item[1]);
+		for(let it = 0; it < this.updateQueue.length; it++) {
+			var item = this.updateQueue[it];
+			var i = item.rpos.x;
+			var j = item.rpos.y;
+			var block = self.get(i, j);
 			var stoneCost = block.stoneCost;
 			var res = block.update(dt);
-			if(res[0]) {
+			if(res.update) {
 				nq.push(item);
 			}
-			else {
-				var pl = players[item[2][0]];
+			if(res.changed) {
+				var pl = rooms[self.room].players[item.info];
 				if(pl) {
 					pl.workers++;
 					pl.stone += stoneCost;
 				}
-			}
-			if(res[1]) {
-				if(self.checkCoords(item[0], item[1] - 1) && self.get(item[0], item[1] - 1).needBlock) {
-					self.get(item[0], item[1] - 1).breakMe();
-					var pl = players[item[2][0]];
+				if(self.checkCoords(i, j - 1) && self.get(i, j - 1).needBlock) {
+					self.breakBlock(i, j - 1, item.info);
 					if(pl) {
 						pl.workers--;
 					}
-					nq.push([item[0], item[1] - 1, item[2]]);
 				}
-				var chunkid = self.getChunkID(item[0], item[1]);
-				self.emitChunk(chunkid.x, chunkid.y);
 			}
-		});
+			if(!res.update || res.changed) {
+				self.emitBlock(i, j);
+			}
+		}
 		this.updateQueue = nq;
 	}
 }
@@ -1082,7 +1108,7 @@ class Room {
 	constructor(id) {
 		this.id = id;
 
-		this.map = new GameMap();
+		this.map = new GameMap(id);
 		this.players = [];
 		this.viruses = [];
 		this.network = [];
@@ -1095,10 +1121,13 @@ class Room {
 		this.network.forEach(function(item, i, arr) {
 			if(item.side == 0) {
 				var player = new Player(item, self.map);
+				item.gameId = self.players.length;
 				self.players.push(player);
 			}
 			else {
-				//TODO: add virus
+				var player = new Player(item, self.map);
+				item.gameId = self.viruses.length;
+				self.viruses.push(player);
 			}
 		});
 		this.map.generateMap();
@@ -1116,7 +1145,7 @@ class Room {
 			item.ready = net.ready;
 			data.push(item);
 		});
-		io.to('room' + this.id).emit('updateRoom', data);
+		io.to('room' + this.id).emit('updateRoom', data, this.id);
 	}
 
 	updatePreGame(dt) {
@@ -1124,7 +1153,7 @@ class Room {
 		this.network.forEach(function(net, i, arr) {
 			allReady = allReady && net.ready;
 		});
-		if(allReady && this.network.length >= 1) {
+		if(allReady && /*this.cntSides[0] >= 1 && this.cntSides[1] >= 1 &&*/ this.network.length >= 1) {
 			this.start();
 		}
 	}
@@ -1132,6 +1161,23 @@ class Room {
 	updateGame(dt) {
 		var data = [];
 		this.players.forEach(function (player, i, arr) {
+			//Processing physics
+			player.tickUpdate(dt);
+
+			player.energy += dt * 2;
+			//Data for transfer
+			var iData = {};
+			iData.id = player.id;
+			iData.physics = player.physics;
+			iData.name = player.network.name;
+			iData.workers = player.workers;
+			iData.energy = player.energy;
+			iData.stone = player.stone;
+			iData.iron = player.iron;
+			iData.hp = player.hp;
+			data.push(iData);
+		});
+		this.viruses.forEach(function (player, i, arr) {
 			//Processing physics
 			player.tickUpdate(dt);
 
@@ -1167,6 +1213,10 @@ class Room {
 function setup() {
 	setInterval(tick, 16);
 	rooms.push(new Room(0));
+	rooms.push(new Room(1));
+	rooms.push(new Room(2));
+	rooms.push(new Room(3));
+	rooms[3].started = true;
 	log("Server started successfully");
 }
 

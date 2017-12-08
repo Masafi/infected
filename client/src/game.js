@@ -24,6 +24,7 @@ var backgroundSprite;
 var mapScene;
 var gameScene;
 var chunkScenes = [];
+var isGameStarted = false;
 
 var isGameActive = false;
 var myKeys = {};
@@ -85,6 +86,7 @@ class Vector2 {
 	}
 }
 
+var bgSize = new Vector2(1920, 480);
 var gameData = [];
 var players = new Map();
 var myNick = undefined;
@@ -300,8 +302,8 @@ class Block {
 
 	update(data = undefined) {
 		if(data) {
-			this.physics.pos.x = data.physics._pos.x;
-			this.physics.pos.y = data.physics._pos.y;
+			this.physics.pos.x = data.pos.x;
+			this.physics.pos.y = data.pos.y;
 			this.solid = data.solid;
 			this.breakable = data.breakable;
 			this.breakTime = data.breakTime;
@@ -309,7 +311,7 @@ class Block {
 			this.textureOffset = new Vector2(data.textureOffset.x, data.textureOffset.y);
 			this.multiTexture = data.multiTexture;
 			this.multiTextureId = data.multiTextureId;
-			this.id = data._id;
+			this.id = data.id;
 		}
 		this.graphics.pos = this.physics.pos.add(this.textureOffset);
 		this.graphics.updatePos(camera);
@@ -322,12 +324,12 @@ class Block {
 		if(this.breakable && !this.isBreaking) 	{
 			this.isBreaking = true;
 			this.breakTimer = 0;
-			this.breakingAnim = new GraphicsPrimitive();
-			var frames = [];
-			for(let i = 0; i < 4; i++) {
-				frames.push(PIXI.Texture.fromFrame("breaking_0" + i + ".png"));
-			}
 			if(this.breakTime) {
+				this.breakingAnim = new GraphicsPrimitive();
+				var frames = [];
+				for(let i = 0; i < 4; i++) {
+					frames.push(PIXI.Texture.fromFrame("breaking_0" + i + ".png"));
+				}
 				this.breakingAnim.updateAnimation([frames, false], 0.06 / this.breakTime);
 				this.breakingAnim.pos = this.physics.pos;
 				this.breakingAnim.updatePos(camera);
@@ -463,11 +465,15 @@ class GameMap {
 	}
 	
 	updateChunk(chunk) {
-		this.getChunk(chunk.physics._pos.x, chunk.physics._pos.y).update(chunk);
+		this.getChunk(chunk.pos.x, chunk.pos.y).update(chunk);
 	}
 
 	updateBlock(i, j) {
 		this.updateQueue.push([i, j]);
+	}
+
+	updateBlockData(data) {
+		this.get(data.rpos.x, data.rpos.y).update(data);
 	}
 
 	checkCoords(i, j) {
@@ -605,15 +611,17 @@ function frame() {
 	}
 	if(isGameActive && players.has(myId)) {	
 		var pl = players.get(myId);
-		document.getElementById('workersVal').innerHTML = '' + Math.floor(pl.workers);
-		document.getElementById('energyVal').innerHTML = '' + Math.floor(pl.energy);
-		document.getElementById('stoneVal').innerHTML = '' + Math.floor(pl.stone);
-		document.getElementById('ironVal').innerHTML = '' + Math.floor(pl.iron);
+		$('#inventory').find('span').eq(0).text(Math.floor(pl.workers).toString());
+		$('#inventory').find('span').eq(1).text(Math.floor(pl.energy).toString());
+		$('#inventory').find('span').eq(2).text(Math.floor(pl.stone).toString());
+		$('#inventory').find('span').eq(3).text(Math.floor(pl.iron).toString());
 	}
 	if(selectBorder.screenPos){ 
 		selectBorder.updateScreenPos();
 	}
-	backgroundSprite.scale.set(Math.max(window.innerWidth / 1920, window.innerHeight / 1080), Math.max(window.innerWidth / 1920, window.innerHeight / 1080));
+	var bgscale = Math.max((CellSize.x * mapSize.x + window.innerWidth) / bgSize.x / 2, (CellSize.y * mapSize.y + window.innerHeight) / bgSize.y) / 2;
+	backgroundSprite.scale.set(bgscale, bgscale);
+	backgroundSprite.position.set(-camera.x / 2, -camera.y / 2);
 	renderer.resize(window.innerWidth, window.innerHeight - 1);
 	renderer.render(screenStage);
 }
@@ -682,6 +690,7 @@ function mouseMoved(event, canvas) {
 
 function enableGame() {
 	if(isGameActive && isGameLoaded) {
+		isGameStarted = true;
 		console.log("Game started!");
 		screenStage.addChild(gameScene);
 	}
