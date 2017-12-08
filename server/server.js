@@ -1108,12 +1108,17 @@ class Room {
 	constructor(id) {
 		this.id = id;
 
+		this.restart();
+	}
+
+	restart() {
 		this.map = new GameMap(id);
 		this.players = [];
 		this.viruses = [];
 		this.network = [];
 		this.cntSides = [0, 0];
 		this.started = false;
+		this.startedTime = new Date();
 	}
 
 	start() {
@@ -1159,8 +1164,10 @@ class Room {
 	}
 
 	updateGame(dt) {
+		var online = 0;
 		var data = [];
 		this.players.forEach(function (player, i, arr) {
+			online += !player.left;
 			//Processing physics
 			player.tickUpdate(dt);
 
@@ -1178,6 +1185,7 @@ class Room {
 			data.push(iData);
 		});
 		this.viruses.forEach(function (player, i, arr) {
+			online += !player.left;
 			//Processing physics
 			player.tickUpdate(dt);
 
@@ -1195,7 +1203,15 @@ class Room {
 			data.push(iData);
 		});
 		this.map.update(dt);
-		//TODO: add virus
+		if(!online || new Date() - this.startedTime >= 1000 * 60 * 15) {
+			io.to('room' + this.id).emit('gameOver');
+			this.network.forEach(function(item, i, arr) {
+				item.room = -1;
+				item.roomId = -1;
+				item.ready = false;
+			});
+			this.restart();
+		}
 
 		io.to('room' + this.id).emit('update', data);
 	}
@@ -1216,7 +1232,7 @@ function setup() {
 	rooms.push(new Room(1));
 	rooms.push(new Room(2));
 	rooms.push(new Room(3));
-	rooms[3].started = true;
+	rooms.push(new Room(4));
 	log("Server started successfully");
 }
 

@@ -13,7 +13,7 @@ setup();
 socket.on('reg-error', function(errText) {
 	$('#login-error').html('<b>Error:</b> ' + errText);
 	$('#login-error').show();
-	deactivateGame();
+	deactivateGame(true);
 });
 
 socket.on('reg-success', function(key, id, name) {
@@ -101,6 +101,10 @@ socket.on('blockUpdate', function(data) {
 	map.updateBlockData(data);
 });
 
+socket.on('gameOver', function() {
+	deactivateGame(false);
+});
+
 function play() {
 	nickname = $('#login-input').val();
 	socket.emit('registration', nickname, +team);
@@ -115,8 +119,9 @@ function activateGame() {
 	enableGame();
 }
 
-function deactivateGame() {
-	$('#login-form').show();
+function deactivateGame(force) {
+	if(force) $('#login-form').show();
+	else $('rooms-form').show();
 	document.getElementById('inventory').style.display = 'none';
 	isGameActive = false;
 	isGameStarted = false;
