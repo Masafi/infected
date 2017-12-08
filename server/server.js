@@ -12,6 +12,7 @@ var taffy = require('taffydb');
 var fs = require('fs');
 var csvParse = require('csv-parse');
 var path = '';
+var sanitizeHtml = require('sanitize-html');
 
 //HTTP server
 var port = process.env.PORT || 80;
@@ -99,6 +100,10 @@ io.on('connection', function(socket) {
 			return;
 		}
 		var empty = true;
+		name = sanitizeHtml(name, {allowedTags: [], allowedAttributes: []});
+		if(name.length >= 16) {
+			name = name.substr(0, 16);
+		}
 		if(name) {
 			for(let i = 0; i < name.length; i++) {
 				if(name[i] != ' ') {
