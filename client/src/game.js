@@ -1,10 +1,8 @@
-<<<<<<< HEAD
-=======
 const textureCSV = 'assets/texture.csv';
 const atlasSprite = 'assets/atlas.json';
 const playerSprite = 'assets/player.json';
 const backgroundImage = 'assets/background.png';
-const keycodes = [[87, 'w'], [65, 'a'], [83, 's'], [68, 'd'], [32, ' ']];	
+const keycodes = [[87, 'w'], [65, 'a'], [83, 's'], [68, 'd'], [32, ' '], [49, '1'], [50, '2'], [51, '3'], [52, '4']];	
 var gScale = 1.7;
 var playerAnim = [['player_run', 1, false], 
 				['player_run', 4, true], 
@@ -12,36 +10,17 @@ var playerAnim = [['player_run', 1, false],
 				['player_jump_down', 2, false], 
 				['player_hit', 3, false]];
 
+PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST;
 PIXI.loader
 	.add(atlasSprite)
 	.add(playerSprite)
 	.add(backgroundImage)
 	.load(setup);
 
-var renderer;
-var screenStage;
-var objects;
-var Resources;
-var backgroundSprite;
-var mapScene;
-var gameScene;
-var chunkScenes = [];
-var isGameStarted = false;
-
-var isGameActive = false;
-var myKeys = {};
-
-var wKey = keyboard(keycodes[0][0], keycodes[0][1]);
-var aKey = keyboard(keycodes[1][0], keycodes[1][1]);
-var sKey = keyboard(keycodes[2][0], keycodes[2][1]);
-var dKey = keyboard(keycodes[3][0], keycodes[3][1]);
-var spaceKey = keyboard(keycodes[4][0], keycodes[4][1]);
-
->>>>>>> master
 class Vector2 {
 	constructor(x, y) {
-		this.x = x;
-		this.y = y;
+		this.x = x || 0;
+		this.y = y || 0;
 	}
 
 	add(v) {
@@ -91,27 +70,11 @@ class Vector2 {
 	copy() {
 		return new Vector2(this.x, this.y);
 	}
+
+	round() {
+		return new Vector2(Math.floor(this.x), Math.floor(this.y));
+	}
 }
-
-<<<<<<< HEAD
-const textureCSV = 'assets/texture.csv';
-const atlasSprite = 'assets/atlas.json';
-const playerSprite = 'assets/player.json';
-const backgroundImage = 'assets/background.png';
-const keycodes = [[87, 'w'], [65, 'a'], [83, 's'], [68, 'd'], [32, ' '], [49, '1'], [50, '2'], [51, '3'], [52, '4']];	
-var gScale = 1.7;
-var playerAnim = [['player_run', 1, false], 
-				['player_run', 4, true], 
-				['player_jump_up', 2, false], 
-				['player_jump_down', 2, false], 
-				['player_hit', 3, false]];
-
-PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST;
-PIXI.loader
-	.add(atlasSprite)
-	.add(playerSprite)
-	.add(backgroundImage)
-	.load(setup);
 
 var renderer;
 var screenStage;
@@ -135,9 +98,6 @@ var spaceKey = keyboard(keycodes[4][0], keycodes[4][1], false);
 var numberKeys = [];
 
 var bgSize = new Vector2(1152, 576);
-=======
-var bgSize = new Vector2(1920, 480);
->>>>>>> master
 var gameData = [];
 var players = new Map();
 var myNick = undefined;
@@ -254,11 +214,8 @@ class Player {
 		this.stone = 100;
 		this.iron = 100;
 		this.hp = 100;
-<<<<<<< HEAD
 
 		this.lastDamageTime = 5;
-=======
->>>>>>> master
 	}
 
 	updateAnimation(id) {
@@ -289,12 +246,9 @@ class Player {
 			this.energy = data.energy;
 			this.stone = data.stone;
 			this.iron = data.iron;
-<<<<<<< HEAD
 			if(this.hp > data.hp) {
 				this.lastDamageTime = 0;
 			}
-=======
->>>>>>> master
 			this.hp = data.hp;
 		}
 		if(this.physics.frameVel.y > 0) {
@@ -331,7 +285,6 @@ class Player {
 			var hex = koef.toString(16);
 			hex = (hex.length == 1 ? "0" : "") + hex;
 			item.sprite.tint = parseInt('FF' + hex + hex, 16);
-<<<<<<< HEAD
 			if(self.lastDamageTime <= 1) {
 				if(Math.floor(self.lastDamageTime * 10) % 2) {
 					item.sprite.alpha = 0.5;
@@ -343,8 +296,6 @@ class Player {
 			else {
 				item.sprite.alpha = 1;				
 			}
-=======
->>>>>>> master
 		});
 		if(self.lastDamageTime < 1) self.lastDamageTime += dt;
 		this.nameSprite.pos = (this.pos.add(new Vector2(this.physics.size.x / 2, 0)));
@@ -395,11 +346,8 @@ class Block {
 			this.multiTexture = data.multiTexture;
 			this.multiTextureId = data.multiTextureId;
 			this.id = data.id;
-<<<<<<< HEAD
 			this.owner = data.owner;
 			this.active = data.active;
-=======
->>>>>>> master
 		}
 		this.graphics.pos = this.physics.pos.add(this.textureOffset);
 		this.graphics.updatePos(camera);
@@ -408,7 +356,6 @@ class Block {
 		}
 	}
 
-<<<<<<< HEAD
 	breakMe(koef) {
 		if(this.breakTime) {
 			this.breakingAnim = new GraphicsPrimitive();
@@ -430,23 +377,6 @@ class Block {
 		else {
 			this.graphics.sprite.texture = PIXI.Texture.fromFrame('sprite_' + (this.id < 10 ? '0' : '') + this.id + '_' +
 											(this.multiTextureId < 10 ? '0' : '') + this.multiTextureId + '.png');
-=======
-	breakMe() {
-		if(this.breakable && !this.isBreaking) 	{
-			this.isBreaking = true;
-			this.breakTimer = 0;
-			if(this.breakTime) {
-				this.breakingAnim = new GraphicsPrimitive();
-				var frames = [];
-				for(let i = 0; i < 4; i++) {
-					frames.push(PIXI.Texture.fromFrame("breaking_0" + i + ".png"));
-				}
-				this.breakingAnim.updateAnimation([frames, false], 0.06 / this.breakTime);
-				this.breakingAnim.pos = this.physics.pos;
-				this.breakingAnim.updatePos(camera);
-				this.breakingAnim.stageToScene(this.scene);
-			}
->>>>>>> master
 		}
 	}
 
@@ -681,11 +611,6 @@ function setup() {
 			mapScene.addChild(chunkScenes[i][j]);
 		}
 	}
-<<<<<<< HEAD
-=======
-	renderDistance = window.innerWidth / CellSize.x / 2 / gScale + 1;
-
->>>>>>> master
 	
 	for(let i = 0; i < 4; i++) {
 		numberKeys.push(keyboard(keycodes[5 + i][0], keycodes[5 + i][1], true));
@@ -723,18 +648,14 @@ function frame() {
 	fpstime += dt;
 	fps++;
 	if(fpstime >= 1) {
-<<<<<<< HEAD
 		if(outputFPS) {
 			console.log(Math.floor(fps / fpstime));
 		}
-=======
->>>>>>> master
 		fps = 0;
 		fpstime = 0;
 	}
 	if(!dataUpdated && isGameActive) {
 		dataUpdated = true;
-<<<<<<< HEAD
 		if(side == 0) {
 			gameData.forEach(function(item, i, arr) {
 				if(item.id != roomId) return;
@@ -743,22 +664,6 @@ function frame() {
 					players.set(item.id, pl);
 				}
 				players.get(item.id).update(item, dt);
-=======
-		gameData.forEach(function(item, i, arr) {
-			if(item.id != myId) return;
-			if(!players.has(item.id)) {
-				var pl = new Player(item.name);
-				players.set(item.id, pl);
-			}
-			players.get(item.id).update(item);
-		});
-		if(players.has(myId)) {
-			camera = players.get(myId).pos.sub(new Vector2(window.innerWidth / gScale / 2, window.innerHeight / gScale / 2));
-			camera.x = Math.max(Math.min(camera.x, mapSize.x * CellSize.x - window.innerWidth / gScale), 0);
-			camera.y = Math.max(Math.min(camera.y, mapSize.y * CellSize.y - window.innerHeight / gScale), 0);
-			players.get(myId).graphics.forEach(function(item, i, arr) {
-				item.updatePos(camera);
->>>>>>> master
 			});
 			if(players.has(roomId)) {
 				camera = players.get(roomId).pos.sub(new Vector2(window.innerWidth / gScale / 2, window.innerHeight / gScale / 2));
@@ -791,7 +696,6 @@ function frame() {
 	if(isGameActive && map) {
 		map.update();
 	}
-<<<<<<< HEAD
 	if(isGameActive) {
 		var pl = undefined;
 		if(side == 0) {	
@@ -806,30 +710,16 @@ function frame() {
 			$('#inventory').find('span').eq(2).text(Math.floor(pl.stone).toString());
 			$('#inventory').find('span').eq(3).text(Math.floor(pl.iron).toString());
 		}
-=======
-	if(isGameActive && players.has(myId)) {	
-		var pl = players.get(myId);
-		$('#inventory').find('span').eq(0).text(Math.floor(pl.workers).toString());
-		$('#inventory').find('span').eq(1).text(Math.floor(pl.energy).toString());
-		$('#inventory').find('span').eq(2).text(Math.floor(pl.stone).toString());
-		$('#inventory').find('span').eq(3).text(Math.floor(pl.iron).toString());
->>>>>>> master
 	}
 	if(selectBorder.screenPos){ 
 		selectBorder.updateScreenPos();
 	}
-<<<<<<< HEAD
 	var prop = 25;
 	var bgscale = Math.max((CellSize.x * mapSize.x * gScale + (prop - 1) * window.innerWidth) / (bgSize.x * prop), (CellSize.y * mapSize.y * gScale + (prop - 1) * window.innerHeight) / (bgSize.y * prop));
 	backgroundSprite.scale.set(bgscale, bgscale);
 	backgroundSprite.position.set(-camera.x * gScale / prop, -camera.y * gScale / prop);
 	gScale = 1.7 * Math.max(window.innerWidth / 1536, window.innerHeight / 734);
 	gameScene.scale.set(gScale, gScale);
-=======
-	var bgscale = Math.max((CellSize.x * mapSize.x + window.innerWidth) / bgSize.x / 2, (CellSize.y * mapSize.y + window.innerHeight) / bgSize.y) / 2;
-	backgroundSprite.scale.set(bgscale, bgscale);
-	backgroundSprite.position.set(-camera.x / 2, -camera.y / 2);
->>>>>>> master
 	renderer.resize(window.innerWidth, window.innerHeight - 1);
 	renderer.render(screenStage);
 }
@@ -858,13 +748,8 @@ function keyboard(keyCode, ch, local) {
 	key.downHandler = function(event) {
 		if (event.keyCode === key.code) {
 			if (key.isUp) {
-<<<<<<< HEAD
 				if(key.press) key.press(ch);
 				if(!key.local && isGameActive) {
-=======
-				if(key.press) key.press();
-				if(isGameActive) {
->>>>>>> master
 					socket.emit("keyboard", ch, true, token);
 				}
 				myKeys[keyCode] = true;
@@ -878,13 +763,8 @@ function keyboard(keyCode, ch, local) {
 	key.upHandler = function(event) {
 		if (event.keyCode === key.code) {
 			if (key.isDown) {
-<<<<<<< HEAD
 				if(key.release) key.release(ch);
 				if(!key.local && isGameActive) {
-=======
-				if(key.release) key.release();
-				if(isGameActive) {
->>>>>>> master
 					socket.emit("keyboard", ch, false, token);
 				}
 				myKeys[keyCode] = false;
@@ -917,14 +797,3 @@ function mouseMoved(event, canvas) {
 		selectBorder.screenPos = pos;
 	}
 }
-<<<<<<< HEAD
-=======
-
-function enableGame() {
-	if(isGameActive && isGameLoaded) {
-		isGameStarted = true;
-		console.log("Game started!");
-		screenStage.addChild(gameScene);
-	}
-}
->>>>>>> master
