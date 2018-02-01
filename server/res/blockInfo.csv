@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ﻿id;solid;breakable;breakTime;energyCost;stoneCost;needBlock;name;textureOffsetx;textureOffsety;multiTexture;damage;owned;differ
 0;0;0;0;0;0;0;air;0;0;0;0;0;0
 1;1;1;2;5;5;0;grass;0;0;1;0;0;0
@@ -13,3 +14,18 @@
 11;1;0;0;0;0;0;spike;0;0;0;5;0;0
 12;1;1;10;50;0;0;virus;0;0;0;10;1;0
 13;1;1;5;100;50;0;miner;0;0;0;0;1;1
+=======
+﻿id;solid;breakable;breakTime;energyCost;stoneCost;needBlock;name;textureOffsetx;textureOffsety;multiTexture;damage
+0;0;0;0;0;0;0;air;0;0;0;0
+1;1;1;2;5;5;0;grass;0;0;1;0
+2;1;1;2;5;5;0;dirt;0;0;1;0
+3;1;1;4;10;10;0;stone;0;0;0;0
+4;0;1;0;0;0;1;flower;0;0;0;0
+5;0;1;0;0;0;1;flower;0;0;0;0
+6;0;1;0;0;0;1;flower;0;0;0;0
+7;0;1;0;0;0;1;flower;0;0;0;0
+8;0;1;0;0;0;1;flower;0;0;0;0
+9;0;1;0;0;0;1;flower;0;0;0;0
+10;0;1;0;0;0;1;tree;-40.5;-195;0;0
+11;1;0;0;0;0;0;spike;0;1;0;1
+>>>>>>> master

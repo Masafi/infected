@@ -2,8 +2,11 @@ var socket = io.connect(window.location.href, { secure: true });
 var token = undefined;
 var chunksGot = 0;
 var team = false;
+<<<<<<< HEAD
 var side = 0;
 var roomId = 0;
+=======
+>>>>>>> master
 
 function setup() {
 	token = Cookies.get('token');
@@ -63,10 +66,13 @@ socket.on('update', function(data) {
 	gameData = data;
 });
 
+<<<<<<< HEAD
 socket.on('update-virus', function(data) {
 	virus.update(data);
 });
 
+=======
+>>>>>>> master
 socket.on('map-chunk', function(chunk) {
 	map.updateChunk(chunk);
 });
@@ -82,6 +88,7 @@ socket.on('requestToken', function() {
 });
 
 socket.on('updateRoom', function(data, id) {
+<<<<<<< HEAD
 	if(!isGameStarted) {
 		$('#players-list-humans > *:not(:first)').remove();
 		$('#players-list-virus > *:not(:first)').remove();
@@ -102,6 +109,24 @@ socket.on('updateRoom', function(data, id) {
 socket.on('gameStarted', function(_side, _roomId) {
 	side = _side;
 	roomId = _roomId;
+=======
+	$('#players-list-humans > *:not(:first)').remove();
+	$('#players-list-virus > *:not(:first)').remove();
+	$('#ready-button').removeClass('disabled');
+	$('#rooms-form').hide();
+	$('#players-form').show();
+	$('#players-form').find('h4').text('Room ' + (id + 1));
+	data.forEach(function(item, i, arr) {
+		var parent = item.side ? $('#players-list-virus') : $('#players-list-humans');
+		var element = $('#players-list-item > *').clone();
+		element.prepend(item.name);
+		if(item.ready) element.find('span').show();
+		parent.append(element);
+	});
+});
+
+socket.on('gameStarted', function() {
+>>>>>>> master
 	activateGame();
 });
 
@@ -128,6 +153,7 @@ function activateGame() {
 }
 
 function deactivateGame(force) {
+<<<<<<< HEAD
 	if(force) {
 		$('#login-form').show();
 	}
@@ -135,13 +161,21 @@ function deactivateGame(force) {
 		$('rooms-form').show();
 		socket.emit('requestRooms', token);
 	}
+=======
+	if(force) $('#login-form').show();
+	else $('rooms-form').show();
+	socket.emit('requestRooms', token);
+>>>>>>> master
 	document.getElementById('inventory').style.display = 'none';
 	isGameActive = false;
 	isGameStarted = false;
 	if (screenStage) {
 		screenStage.removeChild(gameScene);
 	}
+<<<<<<< HEAD
 	console.log("Game over!");
+=======
+>>>>>>> master
 	map = new GameMap();
 }
 
