@@ -2,10 +2,10 @@ body,
 canvas {
 	margin: 0;
 	padding: 0;
-    -moz-user-select: none;
-    -webkit-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
+	-moz-user-select: none;
+	-webkit-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
 }
 
 #game {
@@ -13,61 +13,22 @@ canvas {
 	display: block;
 }
 
-#nicknameForm {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-}
-
-#loadingForm {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	display: none;
-}
-
-#playBtn {
-	position: relative;
-	left: 50%;
-	transform: translate(-50%, 10%);
-}
-
-#errorText {
-	color: red;
+.align-abs-center {
+    position: absolute !important;
+    margin: 0 auto;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
 #inventory {
-	background: url("../assets/gui/background.png");
-	width: 140px;
-	height: 60px;
-	display: none;
-	position: absolute;
-	top: 100%;
-	left: 50%;
-	transform: translate(-50%, -112.5%) scale(1.25, 1.25);
+    position: absolute !important;
+    bottom: 25px;
+    left: 50%;
+    transform: translate(-50%, 0);
+    width: 250px;
 }
-
-#invTable {
-	font-size: 14px;
-}
-
-progress {
-	background-color: #f3f3f3;
-	border: 0;
-	height: 18px;
-	border-radius: 9px;
-}
-
-progress::-webkit-progress-bar {
-	background-color: #f3f3f3;
-}
-
-progress::-webkit-progress-value {
-	background-color: #3377BB;
-}
-
-progress::-moz-progress-bar {
-	background-color: #3377BB;
+ 
+#inventory img {
+    max-width: 100%;
 }

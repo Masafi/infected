@@ -1,34 +1,3 @@
-const textureCSV = 'assets/texture.csv';
-const atlasSprite = 'assets/atlas.json';
-const playerSprite = 'assets/player.json';
-const backgroundImage = 'assets/background.png';
-const keycodes = [[87, 'w'], [65, 'a'], [83, 's'], [68, 'd']];	
-var gScale = 2;
-var playerAnim = [['player_run', 1, false], ['player_run', 4, true], ['player_jump_up', 2, false], ['player_jump_down', 2, false]];
-
-PIXI.loader
-	.add(atlasSprite)
-	.add(playerSprite)
-	.add(backgroundImage)
-	.load(setup);
-
-var renderer;
-var screenStage;
-var objects;
-var Resources;
-var backgroundSprite;
-var mapScene;
-var gameScene;
-var chunkScenes = [];
-
-var isGameActive = false;
-var myKeys = {};
-
-var wKey = keyboard(keycodes[0][0], keycodes[0][1]);
-var aKey = keyboard(keycodes[1][0], keycodes[1][1]);
-var sKey = keyboard(keycodes[2][0], keycodes[2][1]);
-var dKey = keyboard(keycodes[3][0], keycodes[3][1]);
-
 class Vector2 {
 	constructor(x, y) {
 		this.x = x;
@@ -78,12 +47,57 @@ class Vector2 {
 	abs() {
 		return Math.sqrt(this.x * this.x + this.y * this.y);
 	}
+
+	copy() {
+		return new Vector2(this.x, this.y);
+	}
 }
 
+const textureCSV = 'assets/texture.csv';
+const atlasSprite = 'assets/atlas.json';
+const playerSprite = 'assets/player.json';
+const backgroundImage = 'assets/background.png';
+const keycodes = [[87, 'w'], [65, 'a'], [83, 's'], [68, 'd'], [32, ' '], [49, '1'], [50, '2'], [51, '3'], [52, '4']];	
+var gScale = 1.7;
+var playerAnim = [['player_run', 1, false], 
+				['player_run', 4, true], 
+				['player_jump_up', 2, false], 
+				['player_jump_down', 2, false], 
+				['player_hit', 3, false]];
+
+PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST;
+PIXI.loader
+	.add(atlasSprite)
+	.add(playerSprite)
+	.add(backgroundImage)
+	.load(setup);
+
+var renderer;
+var screenStage;
+var objects;
+var Resources;
+var backgroundSprite;
+var mapScene;
+var gameScene;
+var chunkScenes = [];
+var isGameStarted = false;
+var outputFPS = false;
+
+var isGameActive = false;
+var myKeys = {};
+
+var wKey = keyboard(keycodes[0][0], keycodes[0][1], false);
+var aKey = keyboard(keycodes[1][0], keycodes[1][1], false);
+var sKey = keyboard(keycodes[2][0], keycodes[2][1], false);
+var dKey = keyboard(keycodes[3][0], keycodes[3][1], false);
+var spaceKey = keyboard(keycodes[4][0], keycodes[4][1], false);
+var numberKeys = [];
+
+var bgSize = new Vector2(1152, 576);
 var gameData = [];
 var players = new Map();
 var myNick = undefined;
-var myId = undefined;
+var myId = 0;
 var camera = new Vector2(0, 0);
 var CellSize = new Vector2(16, 16);
 var dataUpdated = false;
@@ -95,6 +109,10 @@ var renderDistance = 30;
 var playerAnimations = [];
 var selectBorder = undefined;
 var isGameLoaded = false;
+var fps = 0;
+var fpstime = 0;
+var virus = undefined;
+var currentState = 0;
 
 class GraphicsPrimitive {
 	constructor() {
@@ -133,8 +151,8 @@ class PhysicPrimitive {
 		this._pos = new Vector2(0, 0);
 		this.size = new Vector2(0, 0);
 		this.vel = new Vector2(0, 0);
+		this.frameVel = new Vector2(0, 0);
 		this.acc = new Vector2(0, 0);
-		this.mxvel = new Vector2(0, 0);
 		this._rpos = new Vector2(0, 0);
 		this.rscale = CellSize.mula(1);
 		this.standing = false;
@@ -165,7 +183,6 @@ class Player {
 		this.physics = new PhysicPrimitive();
 		this.physics.pos = new Vector2(200, -100);
 		this.physics.size = new Vector2(15, 21);
-		this.physics.mxvel = new Vector2(400, 4000);
 		this.physics.acc = new Vector2(0, this.physics.g);
 		this.direction = 0;
 
@@ -183,14 +200,18 @@ class Player {
 		this.currentAnim = 0;
 		this.updateAnimation(0);
 		this.nameSprite = new GraphicsPrimitive();
-		this.nameSprite.sprite = new PIXI.Text(name, {fontFamily: "Arial", fontSize: 16, fill: "Black"});
-		this.nameSprite.stageToScene(objects);
+		this.nameSprite.sprite = new PIXI.Text(name, {fontFamily: "Arial", fontSize: 16, fill: "Black", stroke: '#000', strokeThickness: 0});
+		this.nameSprite.sprite.anchor.set(0.5, 1);
+		this.nameSprite.stageToScene(gameScene);
 		this.name = name;
 		this.updated = true;
 		this.workers = 3;
 		this.energy = 100;
 		this.stone = 100;
 		this.iron = 100;
+		this.hp = 100;
+
+		this.lastDamageTime = 5;
 	}
 
 	updateAnimation(id) {
@@ -200,8 +221,9 @@ class Player {
 		this.graphics[this.currentAnim].sprite.play();
 	}
 
-	update(data = undefined) {
+	update(data = undefined, dt) {
 		if(data) {
+			this.updated = true;
 			if(Math.abs(data.physics._pos.x - this.physics.pos.x) > 0.1 || Math.abs(data.physics._pos.y - this.physics.pos.y) > 0.1) {
 				var npos = new Vector2(data.physics._pos.x, data.physics._pos.y);
 				this.physics.pos = npos;
@@ -210,28 +232,32 @@ class Player {
 			this.physics.vel.y = data.physics.vel.y;
 			this.physics.acc.x = data.physics.acc.x;
 			this.physics.acc.y = data.physics.acc.y;
-			this.physics.mxvel.x = data.physics.mxvel.x;
-			this.physics.mxvel.y = data.physics.mxvel.y;
 			this.physics.size.x = data.physics.size.x;
 			this.physics.size.y = data.physics.size.y;
+			this.physics.frameVel.x = data.physics.frameVel.x;
+			this.physics.frameVel.y = data.physics.frameVel.y;
 			this.physics.g = data.physics.g;
 			this.physics.standing = data.physics.standing;
 			this.workers = data.workers;
 			this.energy = data.energy;
 			this.stone = data.stone;
 			this.iron = data.iron;
+			if(this.hp > data.hp) {
+				this.lastDamageTime = 0;
+			}
+			this.hp = data.hp;
 		}
-		if(this.physics.vel.y > 0) {
+		if(this.physics.frameVel.y > 0) {
 			if(this.currentAnim != 2) {
 				this.updateAnimation(2);
 			}
 		}
-		else if(this.physics.vel.y < 0) {
+		else if(this.physics.frameVel.y < 0) {
 			if(this.currentAnim != 3) {
 				this.updateAnimation(3);
 			}
 		}
-		else if(this.physics.vel.x != 0) {
+		else if(this.physics.frameVel.x != 0) {
 			if(this.currentAnim != 1) {
 				this.updateAnimation(1);
 			}
@@ -241,18 +267,34 @@ class Player {
 		}
 		var self = this;
 		this.graphics.forEach(function(item, i, arr) {
-			if(self.physics.vel.x > 0) {
+			if(self.physics.frameVel.x > 0) {
 				self.direction = 0;
 				item.sprite.scale.x = 1;
 			}
-			else if(self.physics.vel.x < 0) {
+			else if(self.physics.frameVel.x < 0) {
 				self.direction = 1;
 				item.sprite.scale.x = -1;
 			}
 			item.pos = self.pos.add(new Vector2(8, -1));
 			item.updatePos(camera);
+			var koef = Math.floor(self.hp * 255 / 100);
+			var hex = koef.toString(16);
+			hex = (hex.length == 1 ? "0" : "") + hex;
+			item.sprite.tint = parseInt('FF' + hex + hex, 16);
+			if(self.lastDamageTime <= 1) {
+				if(Math.floor(self.lastDamageTime * 10) % 2) {
+					item.sprite.alpha = 0.5;
+				}
+				else {
+					item.sprite.alpha = 1;
+				}
+			}
+			else {
+				item.sprite.alpha = 1;				
+			}
 		});
-		this.nameSprite.pos = this.pos.add(new Vector2(0, -25));
+		if(self.lastDamageTime < 1) self.lastDamageTime += dt;
+		this.nameSprite.pos = (this.pos.add(new Vector2(this.physics.size.x / 2, 0)));
 		this.nameSprite.updatePos(camera);
 	}
 
@@ -274,33 +316,30 @@ class Block {
 		this.graphics.initSprite('sprite_00.png');
 		this.solid = false;
 		this._id = 0;
-		this.needBlock = false;
 		this.name = '';
-		this.energyCost = 0;
-		this.stoneCost = 0;
 		this.textureOffset = new Vector2(0, 0);
+		this.multiTexture = 0;
+		this.multiTextureId = 0;
 
 		this.breakable = false;
-		this.isBreaking = false;
 		this.breakTime = 0;
-		this.breakTimer = 0;
 		this.breakingAnim = undefined;
 		this.id = 0;
+		this.koef = 1;
 	}
 
 	update(data = undefined) {
 		if(data) {
-			this.id = data._id;
-			this.physics.pos.x = data.physics._pos.x;
-			this.physics.pos.y = data.physics._pos.y;
+			this.physics.pos.x = data.pos.x;
+			this.physics.pos.y = data.pos.y;
 			this.solid = data.solid;
 			this.breakable = data.breakable;
 			this.breakTime = data.breakTime;
-			this.energyCost = data.energyCost;
-			this.stoneCost = data.stoneCost;
-			this.needBlock = data.needBlock;
 			this.name = data.name;
 			this.textureOffset = new Vector2(data.textureOffset.x, data.textureOffset.y);
+			this.multiTexture = data.multiTexture;
+			this.multiTextureId = data.multiTextureId;
+			this.id = data.id;
 		}
 		this.graphics.pos = this.physics.pos.add(this.textureOffset);
 		this.graphics.updatePos(camera);
@@ -309,26 +348,31 @@ class Block {
 		}
 	}
 
-	breakMe() {
-		if(this.breakable && !this.isBreaking) 	{
-			this.isBreaking = true;
-			this.breakTimer = 0;
+	breakMe(koef) {
+		if(this.breakTime) {
 			this.breakingAnim = new GraphicsPrimitive();
 			var frames = [];
 			for(let i = 0; i < 4; i++) {
 				frames.push(PIXI.Texture.fromFrame("breaking_0" + i + ".png"));
 			}
-			if(this.breakTime) {
-				this.breakingAnim.updateAnimation([frames, false], 0.06 / this.breakTime);
-				this.breakingAnim.pos = this.physics.pos;
-				this.breakingAnim.updatePos(camera);
-				this.breakingAnim.stageToScene(this.scene);
-			}
+			this.breakingAnim.updateAnimation([frames, false], 0.06 * koef / this.breakTime);
+			this.breakingAnim.pos = this.physics.pos;
+			this.breakingAnim.updatePos(camera);
+			this.breakingAnim.stageToScene(this.scene);
+		}
+	}
+
+	updateSprite() {
+		if(!this.multiTexture) {
+			this.graphics.sprite.texture = PIXI.Texture.fromFrame('sprite_' + (this.id < 10 ? '0' : '') + this.id + '.png');
+		}
+		else {
+			this.graphics.sprite.texture = PIXI.Texture.fromFrame('sprite_' + (this.id < 10 ? '0' : '') + this.id + '_' +
+											(this.multiTextureId < 10 ? '0' : '') + this.multiTextureId + '.png');
 		}
 	}
 
 	set id(nid) {
-		this.graphics.sprite.texture = PIXI.Texture.fromFrame('sprite_' + (nid < 10 ? '0' : '') + nid + '.png');
 		if(this._id != nid) {
 			if(this.breakingAnim && this.breakingAnim.sprite) {
 				this.breakingAnim.unstageFromScene(this.scene);
@@ -342,6 +386,7 @@ class Block {
 			this.graphics.unstageFromScene(this.scene);
 		}
 		this._id = nid;
+		this.updateSprite();
 	}
 
 	get id() {
@@ -364,6 +409,7 @@ class Chunk {
 				this.chunk[i][j].physics.rpos = new Vector2(i, j).add(this.physics.pos);
 			}
 		}
+		this.requested = 0;
 		this.delivered = false;
 	}
 
@@ -371,7 +417,7 @@ class Chunk {
 		var self = this;
 		var curUpdate = this.updateRender();
 		if(curUpdate || this.prevUpdate || data) {
-			this.delivered = true;
+			if(data) this.delivered = true;
 			this.prevUpdate = curUpdate;
 			this.chunk.forEach(function(row, i, arr) {
 				row.forEach(function(item, j, rarr) {
@@ -387,23 +433,25 @@ class Chunk {
 	}
 
 	updateRender() {
-		if(players.has(myId)) {
-			var dist = Math.max(Math.min(Math.abs(this.physics.pos.x - (camera.x + window.innerWidth / gScale / 2) / CellSize.x), 
-										 Math.abs(this.physics.pos.x + chunkSize - (camera.x + window.innerWidth / gScale / 2) / CellSize.x)), 
-								Math.min(Math.abs(this.physics.pos.y - (camera.y + window.innerHeight / gScale / 2) / CellSize.y), 
-										 Math.abs(this.physics.pos.y + chunkSize - (camera.y + window.innerHeight / gScale / 2) / CellSize.y))); 
-			if(dist <= renderDistance) {
-				if(!this.delivered) {
-					socket.emit('requestChunk', this.physics.rpos.x, this.physics.rpos.y, token);
-				}
-				chunkScenes[this.physics.rpos.x][this.physics.rpos.y].visible = true;
-				return true;
+		var pos = camera.copy();
+		pos = new Vector2(pos.x + window.innerWidth / gScale / 2, pos.y + window.innerHeight / gScale / 2).div(CellSize);
+		var dist = Math.max(Math.min(Math.abs(this.physics.pos.x - pos.x), 
+								 Math.abs(this.physics.pos.x + chunkSize - pos.x)), 
+						Math.min(Math.abs(this.physics.pos.y - pos.y), 
+								 Math.abs(this.physics.pos.y + chunkSize - pos.y)));
+		this.requested++;
+		if(dist <= renderDistance) {
+			if(!this.delivered && this.requested >= 60) {
+				socket.emit('requestChunk', this.physics.rpos.x, this.physics.rpos.y, token);
+				this.requested = 0;
 			}
-			else {
-				this.delivered = false;
-				chunkScenes[this.physics.rpos.x][this.physics.rpos.y].visible = false;
-				return false;
-			}
+			chunkScenes[this.physics.rpos.x][this.physics.rpos.y].visible = true;
+			return true;
+		}
+		else {
+			this.delivered = false;
+			chunkScenes[this.physics.rpos.x][this.physics.rpos.y].visible = false;
+			return false;
 		}
 	}
 
@@ -444,11 +492,15 @@ class GameMap {
 	}
 	
 	updateChunk(chunk) {
-		this.getChunk(chunk.physics._pos.x, chunk.physics._pos.y).update(chunk);
+		this.getChunk(chunk.pos.x, chunk.pos.y).update(chunk);
 	}
 
 	updateBlock(i, j) {
 		this.updateQueue.push([i, j]);
+	}
+
+	updateBlockData(data) {
+		this.get(data.rpos.x, data.rpos.y).update(data);
 	}
 
 	checkCoords(i, j) {
@@ -461,6 +513,25 @@ class GameMap {
 				item.update(undefined);
 			});
 		});
+	}
+}
+
+class Virus {
+	constructor() {
+		this.pos = new Vector2(0, 0);
+
+		this.workers = 3;
+		this.energy = 100;
+		this.stone = 100;
+		this.iron = 100;
+	}
+
+	update(data) {
+		this.pos = new Vector2(data.pos.x, data.pos.y);
+		this.workers = data.workers;
+		this.energy = data.energy;
+		this.stone = data.stone;
+		this.iron = data.iron;
 	}
 }
 
@@ -487,12 +558,18 @@ function setup() {
 		rpos.y = Math.floor(selectBorder.pos.y / CellSize.y);
 		selectBorder.pos = rpos.mul(CellSize);
 		selectBorder.updatePos(camera);
+		var good = false;
 		if(map.checkCoords(rpos.x, rpos.y) && map.get(rpos.x, rpos.y).id != 0) {
-			selectBorder.sprite.visible = true;
+			if(side == 0 && players.has(roomId)) {
+				var pl = players.get(roomId);
+				var dist = rpos.add(new Vector2(1 / 2, 1 / 2)).sub(pl.physics.rpos.add(pl.physics.size.diva(CellSize.x * 2))).abs();
+				if(dist <= 5) good = true;
+			}
+			else if(side == 1) {
+				good = true;
+			}
 		}
-		else {
-			selectBorder.sprite.visible = false;
-		}
+		selectBorder.sprite.visible = good;
 	};
 
 	loadAnimation();
@@ -507,12 +584,17 @@ function setup() {
 			mapScene.addChild(chunkScenes[i][j]);
 		}
 	}
-
-	map = new GameMap();
 	
+	for(let i = 0; i < 4; i++) {
+		numberKeys.push(keyboard(keycodes[5 + i][0], keycodes[5 + i][1], true));
+	}
+
 	selectBorder.stageToScene(gameScene);
 
 	isGameLoaded = 1;
+
+	map = new GameMap();
+	
 	enableGame();
 	frame();
 }
@@ -531,76 +613,102 @@ function loadAnimation() {
 	});
 }
 
-var fps = 0;
-var fpstime = 0;
-
 function frame() {
 	requestAnimationFrame(frame);
-	if(players.has(myId)) {
-		var curTime = new Date().getTime();
-		var dt = (curTime - lastTickTime) / 1000;
-		lastTickTime = curTime;
-		fpstime += dt;
-		fps++;
-		if(fpstime >= 1) {
-			fps = 0;
-			fpstime = 0;
+	var curTime = new Date().getTime();
+	var dt = (curTime - lastTickTime) / 1000;
+	lastTickTime = curTime;
+	fpstime += dt;
+	fps++;
+	if(fpstime >= 1) {
+		if(outputFPS) {
+			console.log(Math.floor(fps / fpstime));
 		}
-		//players.get(myId).tickUpdate(dt);
+		fps = 0;
+		fpstime = 0;
 	}
-	if(!dataUpdated) {
+	if(!dataUpdated && isGameActive) {
 		dataUpdated = true;
-		gameData.forEach(function(item, i, arr) {
-			if(item.id != myId) return;
-			if(!players.has(item.id)) {
-				var pl = new Player(item.name);
-				players.set(item.id, pl);
-			}
-			players.get(item.id).update(item);
-		});
-		var curPlayer = players.get(myId);
-		if(players.has(myId)) {
-			camera = players.get(myId).pos.sub(new Vector2(window.innerWidth / gScale / 2, window.innerHeight / gScale / 2));
-			camera.x = Math.max(Math.min(camera.x, mapSize.x * CellSize.x - window.innerWidth / gScale), 0);
-			camera.y = Math.max(Math.min(camera.y, mapSize.y * CellSize.y - window.innerHeight / gScale), 0);
-			players.get(myId).graphics.forEach(function(item, i, arr) {
-				item.updatePos(camera);
+		if(side == 0) {
+			gameData.forEach(function(item, i, arr) {
+				if(item.id != roomId) return;
+				if(!players.has(item.id)) {
+					var pl = new Player(item.name);
+					players.set(item.id, pl);
+				}
+				players.get(item.id).update(item, dt);
 			});
-			players.get(myId).nameSprite.updatePos(camera);
+			if(players.has(roomId)) {
+				camera = players.get(roomId).pos.sub(new Vector2(window.innerWidth / gScale / 2, window.innerHeight / gScale / 2));
+				camera.x = Math.max(Math.min(camera.x, mapSize.x * CellSize.x - window.innerWidth / gScale), 0);
+				camera.y = Math.max(Math.min(camera.y, mapSize.y * CellSize.y - window.innerHeight / gScale), 0);
+				players.get(roomId).graphics.forEach(function(item, i, arr) {
+					item.updatePos(camera);
+				});
+				players.get(roomId).nameSprite.updatePos(camera);
+			}
+		}
+		else {
+			camera = virus.pos.sub(new Vector2(window.innerWidth / gScale / 2, window.innerHeight / gScale / 2));
 		}
 		gameData.forEach(function(item, i, arr) {
-			if(item.id == myId) return;
+			if(side == 0 && item.id == roomId) return;
 			if(!players.has(item.id)) {
 				var pl = new Player(item.name);
 				players.set(item.id, pl);
 			}
-			players.get(item.id).update(item);
+			players.get(item.id).update(item, dt);
 		});
 	}
-	else {
-		for(let i in players) {
-			i[1].update();
-		}
-	}
+	//TODO: implement
+	// else {
+	// 	for(let i in players) {
+	// 		i[1].update();
+	// 	}
+	// }
 	if(isGameActive && map) {
 		map.update();
 	}
-	if(isGameActive && players.has(myId)) {	
-		var pl = players.get(myId);
-		document.getElementById('workersVal').innerHTML = '' + Math.floor(pl.workers);
-		document.getElementById('energyVal').innerHTML = '' + Math.floor(pl.energy);
-		document.getElementById('stoneVal').innerHTML = '' + Math.floor(pl.stone);
-		document.getElementById('ironVal').innerHTML = '' + Math.floor(pl.iron);
+	if(isGameActive) {
+		var pl = undefined;
+		if(side == 0) {	
+			pl = players.get(roomId);
+		}
+		else {
+			pl = virus;
+		}
+		if(pl) {
+			$('#inventory').find('span').eq(0).text(Math.floor(pl.workers).toString());
+			$('#inventory').find('span').eq(1).text(Math.floor(pl.energy).toString());
+			$('#inventory').find('span').eq(2).text(Math.floor(pl.stone).toString());
+			$('#inventory').find('span').eq(3).text(Math.floor(pl.iron).toString());
+		}
 	}
 	if(selectBorder.screenPos){ 
 		selectBorder.updateScreenPos();
 	}
-	backgroundSprite.scale.set(Math.max(window.innerWidth / 1920, window.innerHeight / 1080), Math.max(window.innerWidth / 1920, window.innerHeight / 1080));
+	var prop = 25;
+	var bgscale = Math.max((CellSize.x * mapSize.x * gScale + (prop - 1) * window.innerWidth) / (bgSize.x * prop), (CellSize.y * mapSize.y * gScale + (prop - 1) * window.innerHeight) / (bgSize.y * prop));
+	backgroundSprite.scale.set(bgscale, bgscale);
+	backgroundSprite.position.set(-camera.x * gScale / prop, -camera.y * gScale / prop);
+	gScale = 1.7 * Math.max(window.innerWidth / 1536, window.innerHeight / 734);
+	gameScene.scale.set(gScale, gScale);
 	renderer.resize(window.innerWidth, window.innerHeight - 1);
 	renderer.render(screenStage);
 }
 
-function keyboard(keyCode, ch) {
+function enableGame() {
+	if(isGameActive && isGameLoaded) {
+		isGameStarted = true;
+		if(side) {
+			virus = new Virus();
+		}
+		console.log("Game started!");
+		screenStage.addChild(gameScene);
+	}
+}
+
+function keyboard(keyCode, ch, local) {
 	var key = {};
 	key.code = keyCode;
 	key.isDown = false;
@@ -608,12 +716,15 @@ function keyboard(keyCode, ch) {
 	key.press = undefined;
 	key.release = undefined;
 	key.char = ch;
+	key.local = local;
 	//The `downHandler`
 	key.downHandler = function(event) {
 		if (event.keyCode === key.code) {
 			if (key.isUp) {
-				if(key.press) key.press();
-				socket.emit("keyboard", ch, true, token);
+				if(key.press) key.press(ch);
+				if(!key.local && isGameActive) {
+					socket.emit("keyboard", ch, true, token);
+				}
 				myKeys[keyCode] = true;
 			}
 			key.isDown = true;
@@ -625,8 +736,10 @@ function keyboard(keyCode, ch) {
 	key.upHandler = function(event) {
 		if (event.keyCode === key.code) {
 			if (key.isDown) {
-				if(key.release) key.release();
-				socket.emit("keyboard", ch, false, token);
+				if(key.release) key.release(ch);
+				if(!key.local && isGameActive) {
+					socket.emit("keyboard", ch, false, token);
+				}
 				myKeys[keyCode] = false;
 			}
 			key.isDown = false;
@@ -645,7 +758,7 @@ function mouseDown(event, canvas) {
 		var pos = new Vector2();
 		pos.x = event.pageX - canvas.offsetLeft;
 		pos.y = event.pageY - canvas.offsetTop;
-		socket.emit("mouse", pos.div(new Vector2(gScale, gScale)).add(camera), event.button, token);
+		socket.emit("mouse", pos.div(new Vector2(gScale, gScale)).add(camera), event.button, currentState, token);
 	}
 }
 
@@ -655,11 +768,5 @@ function mouseMoved(event, canvas) {
 		pos.x = event.pageX - canvas.offsetLeft;
 		pos.y = event.pageY - canvas.offsetTop;
 		selectBorder.screenPos = pos;
-	}
-}
-
-function enableGame() {
-	if(isGameActive && isGameLoaded) {
-		screenStage.addChild(gameScene);
 	}
 }

@@ -1,23 +1,21 @@
-var socket = io.connect(window.location.href, {secure: true});
+var socket = io.connect(window.location.href, { secure: true });
 var token = undefined;
 var chunksGot = 0;
+var team = false;
+var side = 0;
+var roomId = 0;
 
-function retrieveToken() {
-	var cookie = decodeURIComponent(document.cookie);
-	if(cookie && cookie.length) {
-		cookie = cookie.split(';');
-		token = cookie[0].split('=')[1];
-	}
+function setup() {
+	token = Cookies.get('token');
+	socket.emit('requestRooms');
 }
 
-retrieveToken();
+setup();
 
 socket.on('reg-error', function(errText) {
-	let errDiv = document.getElementById('errorText');
-	errDiv.innerHTML = errText;
-	let nickDiv = document.getElementById('nicknameForm');
-	nickDiv.style.display = 'inline';
-	deactivateGame();
+	$('#login-error').html('<b>Error:</b> ' + errText);
+	$('#login-error').show();
+	deactivateGame(true);
 });
 
 socket.on('reg-success', function(key, id, name) {
@@ -25,19 +23,15 @@ socket.on('reg-success', function(key, id, name) {
 	token = key;
 	myNick = name;
 	myId = id;
-	var date = new Date();
-	date.setTime(date.getTime() + 60 * 60 * 1000);
-	document.cookie = 'token=' + token + ';expires=' + date + ';path=/';
-	activateGame();
+	Cookies.set('token', token);
+	socket.emit('requestRooms', token);
+	$('#login-input').removeClass('is-invalid');
+	$('#login-form').hide();
+	$('#rooms-form').show();
 });
 
-socket.on('update', function(data) {
-	dataUpdated = false;
-	gameData = data;
-});
-
-socket.on('reg-disconnect', function(id) {
-	if(players.has(id)) {
+socket.on('reg-disconnected', function(id) {
+	if (players.has(id)) {
 		players.get(id).graphics.forEach(function(item, i, arr) {
 			item.unstageFromScene(objects);
 		});
@@ -46,37 +40,152 @@ socket.on('reg-disconnect', function(id) {
 	}
 });
 
+socket.on('rooms', function(data) {
+	$('#rooms-list').empty();
+	data.forEach(function(item, i, arr) {
+		var element = $('#rooms-list-item > *').clone();
+		element.prepend('Room ' + (item.id + 1));
+		element.find('span').text((item.players[0] + item.players[1]).toString());
+		element.click(function() {
+			chooseRoom(item.id);
+		});
+		if(item.started) {
+			element.addClass('active');
+			element.find('span').removeClass('badge-primary');
+			element.find('span').addClass('badge-light text-primary');
+		}
+		$('#rooms-list').append(element);
+	});
+});
+
+socket.on('update', function(data) {
+	dataUpdated = false;
+	gameData = data;
+});
+
+socket.on('update-virus', function(data) {
+	virus.update(data);
+});
+
 socket.on('map-chunk', function(chunk) {
 	map.updateChunk(chunk);
 });
 
-socket.on('blockBreaking', function(pos) {
-	map.get(pos.x, pos.y).breakMe();
+socket.on('blockBreaking', function(pos, koef) {
+	map.get(pos.x, pos.y).breakMe(koef);
 });
 
 socket.on('requestToken', function() {
-	if(token) {
+	if (token) {
 		socket.emit('returnToken', token);
 	}
 });
 
+socket.on('updateRoom', function(data, id) {
+	if(!isGameStarted) {
+		$('#players-list-humans > *:not(:first)').remove();
+		$('#players-list-virus > *:not(:first)').remove();
+		$('#ready-button').removeClass('disabled');
+		$('#rooms-form').hide();
+		$('#players-form').show();
+		$('#players-form').find('h4').text('Room ' + (id + 1));
+		data.forEach(function(item, i, arr) {
+			var parent = item.side ? $('#players-list-virus') : $('#players-list-humans');
+			var element = $('#players-list-item > *').clone();
+			element.prepend(item.name);
+			if(item.ready) element.find('span').show();
+			parent.append(element);
+		});
+	}
+});
+
+socket.on('gameStarted', function(_side, _roomId) {
+	side = _side;
+	roomId = _roomId;
+	activateGame();
+});
+
+socket.on('blockUpdate', function(data) {
+	map.updateBlockData(data);
+});
+
+socket.on('gameOver', function() {
+	deactivateGame(false);
+});
+
 function play() {
-	var nicknameInput = document.getElementsByName('nickname')[0].value;
-	socket.emit('registration', nicknameInput);
+	nickname = $('#login-input').val();
+	socket.emit('registration', nickname, +team);
 }
 
 function activateGame() {
-	document.getElementById('nicknameForm').style.display = 'none';
+	$('#rooms-form').hide();
+	$('#login-form').hide();
+	$('#players-form').hide();
 	document.getElementById('inventory').style.display = 'inline';
-	isGameActive = 1;
+	isGameActive = true;
 	enableGame();
 }
 
-function deactivateGame() {
-	document.getElementById('nicknameForm').style.display = 'inline';
+function deactivateGame(force) {
+	if(force) {
+		$('#login-form').show();
+	}
+	else {
+		$('rooms-form').show();
+		socket.emit('requestRooms', token);
+	}
 	document.getElementById('inventory').style.display = 'none';
-	isGameActive = 0;
-	if(screenStage) {
+	isGameActive = false;
+	isGameStarted = false;
+	if (screenStage) {
 		screenStage.removeChild(gameScene);
 	}
+	console.log("Game over!");
+	map = new GameMap();
 }
+
+function chooseRoom(id) {
+	socket.emit('joinRoom', token, id);
+}
+
+function leave() {
+	socket.emit('leaveRoom', token);
+	$('#players-form').hide();
+	$('#rooms-form').show();
+	socket.emit('requestRooms', token);
+}
+
+var isReady = false;
+
+function ready() {
+	isReady = !isReady;
+	socket.emit('ready', token, isReady);
+}
+
+function switchSide() {
+	socket.emit('switchSide', token);
+}
+
+$(document).ready(function() {
+	// Обработчик кнопки авторизации
+	$('#login-button').click(play);
+
+	// Выбор команды
+	function toggleTeam() {
+		team = !team;
+		$('#login-humans-button').toggle();
+		$('#login-virus-button').toggle();
+	}
+	$('#login-humans-button').click(toggleTeam);
+	$('#login-virus-button').click(toggleTeam);
+
+	// Выход с хаты
+	$('#leave-button').click(leave);
+
+	// Смена команды
+	$('#switch-team-button').click(switchSide);
+
+	// Кнопка ready
+	$('#ready-button').click(ready);
+});
