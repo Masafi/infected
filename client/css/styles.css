@@ -1,16 +1,16 @@
 body,
 canvas {
-	margin: 0;
-	padding: 0;
-	-moz-user-select: none;
-	-webkit-user-select: none;
-	-ms-user-select: none;
-	user-select: none;
+    margin: 0;
+    padding: 0;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
 #game {
-	position: absolute;
-	display: block;
+    position: absolute;
+    display: block;
 }
 
 .align-abs-center {
@@ -19,6 +19,18 @@ canvas {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+}
+
+.form-small {
+    width: 100%;
+    max-width: 400px;
+    padding: 0 25px;
+}
+
+.form-medium {
+    width: 100%;
+    max-width: 600px;
+    padding: 0 25px;
 }
 
 #inventory {

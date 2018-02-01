@@ -204,18 +204,20 @@ io.on('connection', function(socket) {
 		}
 	});
 
-	socket.on('switchSide', function(token) {
+	socket.on('joinSide', function(token, team) {
 		if(verifyToken(token)) {
 			var network = usersNetwork({'token': token}).first().network;
 			var room = network.room;
 			var curside = network.side;
-			var toside = 1 - curside;
-			if(room >= 0 && room < rooms.length && !rooms[room].started && rooms[room].cntSides[toside] < mxPlayers) {
-				rooms[room].cntSides[toside]++;
-				rooms[room].cntSides[curside]--;
-				network.side = toside;
-				rooms[room].emitRoom();
+			if(curside != team) {
+				var toside = 1 - curside;
+				if(room >= 0 && room < rooms.length && !rooms[room].started && rooms[room].cntSides[toside] < mxPlayers) {
+					rooms[room].cntSides[toside]++;
+					rooms[room].cntSides[curside]--;
+					network.side = toside;
+				}
 			}
+			rooms[room].emitRoom();
 		}
 	});
 

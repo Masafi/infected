@@ -1914,3 +1914,26 @@
 16:50:36 [INFO:1514]: Server started successfully
 16:50:36 [WARN:1559]: Server overload: skipping 25 ticks
 16:52:41 [INFO:161]: asd (0) joined the game. Total: 1
+17:58:09 [INFO:1512]: Thu Feb 01 2018 17:58:09 GMT+0300 (RTZ 2 (зима))
+17:58:09 [INFO:1513]: Server version: 0.1.0
+17:58:09 [INFO:1514]: Server started successfully
+17:58:09 [WARN:1559]: Server overload: skipping 33 ticks
+17:58:12 [WARN:1559]: Server overload: skipping 6 ticks
+17:58:12 [WARN:1559]: Server overload: skipping 6 ticks
+17:58:13 [WARN:1559]: Server overload: skipping 5 ticks
+17:58:47 [INFO:161]: фыв (0) joined the game. Total: 1
+17:58:47 [INFO:350]: фыв left the game. Total: 1
+18:04:58 [INFO:1514]: Thu Feb 01 2018 18:04:58 GMT+0300 (RTZ 2 (зима))
+18:04:58 [INFO:1515]: Server version: 0.1.0
+18:04:58 [INFO:1516]: Server started successfully
+18:04:58 [WARN:1561]: Server overload: skipping 28 ticks
+18:05:02 [INFO:161]: asd (0) joined the game. Total: 1
+18:06:04 [INFO:1514]: Thu Feb 01 2018 18:06:04 GMT+0300 (RTZ 2 (зима))
+18:06:04 [INFO:1515]: Server version: 0.1.0
+18:06:04 [INFO:1516]: Server started successfully
+18:06:04 [WARN:1561]: Server overload: skipping 63 ticks
+18:06:06 [INFO:161]: asd (0) joined the game. Total: 1
+18:06:11 [INFO:1419]: Room 0 started
+18:06:11 [WARN:1561]: Server overload: skipping 32 ticks
+18:06:12 [WARN:1561]: Server overload: skipping 5 ticks
+18:06:30 [WARN:1561]: Server overload: skipping 6 ticks

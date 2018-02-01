@@ -83,8 +83,8 @@ socket.on('requestToken', function() {
 
 socket.on('updateRoom', function(data, id) {
 	if(!isGameStarted) {
-		$('#players-list-humans > *:not(:first)').remove();
-		$('#players-list-virus > *:not(:first)').remove();
+		$('#players-list-humans').empty();
+		$('#players-list-virus').empty();
 		$('#ready-button').removeClass('disabled');
 		$('#rooms-form').hide();
 		$('#players-form').show();
@@ -163,28 +163,16 @@ function ready() {
 	socket.emit('ready', token, isReady);
 }
 
-function switchSide() {
-	socket.emit('switchSide', token);
+function joinSide(team) {
+	socket.emit('joinSide', token, team);
 }
 
 $(document).ready(function() {
 	// Обработчик кнопки авторизации
 	$('#login-button').click(play);
 
-	// Выбор команды
-	function toggleTeam() {
-		team = !team;
-		$('#login-humans-button').toggle();
-		$('#login-virus-button').toggle();
-	}
-	$('#login-humans-button').click(toggleTeam);
-	$('#login-virus-button').click(toggleTeam);
-
 	// Выход с хаты
 	$('#leave-button').click(leave);
-
-	// Смена команды
-	$('#switch-team-button').click(switchSide);
 
 	// Кнопка ready
 	$('#ready-button').click(ready);
