@@ -326,6 +326,8 @@ class Block {
 		this.breakingAnim = undefined;
 		this.id = 0;
 		this.koef = 1;
+		this.owner = -1;
+		this.active = 1;
 	}
 
 	update(data = undefined) {
@@ -340,6 +342,8 @@ class Block {
 			this.multiTexture = data.multiTexture;
 			this.multiTextureId = data.multiTextureId;
 			this.id = data.id;
+			this.owner = data.owner;
+			this.active = data.active;
 		}
 		this.graphics.pos = this.physics.pos.add(this.textureOffset);
 		this.graphics.updatePos(camera);
@@ -566,7 +570,16 @@ function setup() {
 				if(dist <= 5) good = true;
 			}
 			else if(side == 1) {
-				good = true;
+				var neighbour = false;
+				let shift = [new Vector2(0, 0), new Vector2(-1, 0), new Vector2(1, 0), new Vector2(0, -1), new Vector2(0, 1)];
+				for(let i = 0; i < 5; i++) {
+					var t = rpos.add(shift[i]);
+					if(map.checkCoords(t.x, t.y) && map.get(t.x, t.y).owner == myId) {
+						neighbour = true;
+						break;
+					}
+				}
+				good = neighbour;
 			}
 		}
 		selectBorder.sprite.visible = good;

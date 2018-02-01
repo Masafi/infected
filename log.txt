@@ -1828,3 +1828,83 @@
 15:36:48 [INFO:1410]: Room 0 started
 15:36:48 [WARN:1552]: Server overload: skipping 34 ticks
 15:36:49 [WARN:1552]: Server overload: skipping 8 ticks
+16:01:18 [INFO:1510]: Thu Feb 01 2018 16:01:18 GMT+0300 (RTZ 2 (зима))
+16:01:18 [INFO:1511]: Server version: 0.1.0
+16:01:18 [INFO:1512]: Server started successfully
+16:01:18 [WARN:1557]: Server overload: skipping 51 ticks
+16:01:24 [INFO:162]: asd (0) joined the game. Total: 1
+16:01:28 [INFO:1415]: Room 1 started
+16:01:28 [WARN:1557]: Server overload: skipping 22 ticks
+16:01:29 [WARN:1557]: Server overload: skipping 5 ticks
+16:01:29 [WARN:1557]: Server overload: skipping 5 ticks
+16:03:09 [INFO:1511]: Thu Feb 01 2018 16:03:09 GMT+0300 (RTZ 2 (зима))
+16:03:09 [INFO:1512]: Server version: 0.1.0
+16:03:09 [INFO:1513]: Server started successfully
+16:03:09 [WARN:1558]: Server overload: skipping 48 ticks
+16:03:11 [INFO:162]: asd (0) joined the game. Total: 1
+16:03:13 [INFO:1416]: Room 0 started
+16:03:13 [WARN:1558]: Server overload: skipping 39 ticks
+16:03:14 [WARN:1558]: Server overload: skipping 6 ticks
+16:03:25 [INFO:1511]: Thu Feb 01 2018 16:03:25 GMT+0300 (RTZ 2 (зима))
+16:03:25 [INFO:1512]: Server version: 0.1.0
+16:03:25 [INFO:1513]: Server started successfully
+16:03:25 [WARN:1558]: Server overload: skipping 47 ticks
+16:03:30 [INFO:162]: asd (0) joined the game. Total: 1
+16:03:33 [INFO:1416]: Room 0 started
+16:03:33 [WARN:1558]: Server overload: skipping 38 ticks
+16:03:34 [WARN:1558]: Server overload: skipping 7 ticks
+16:03:50 [INFO:1510]: Thu Feb 01 2018 16:03:50 GMT+0300 (RTZ 2 (зима))
+16:03:50 [INFO:1511]: Server version: 0.1.0
+16:03:50 [INFO:1512]: Server started successfully
+16:03:50 [WARN:1557]: Server overload: skipping 40 ticks
+16:03:51 [INFO:162]: asd (0) joined the game. Total: 1
+16:03:53 [INFO:1415]: Room 0 started
+16:03:53 [WARN:1557]: Server overload: skipping 35 ticks
+16:03:55 [WARN:1557]: Server overload: skipping 6 ticks
+16:05:50 [INFO:1510]: Thu Feb 01 2018 16:05:50 GMT+0300 (RTZ 2 (зима))
+16:05:50 [INFO:1511]: Server version: 0.1.0
+16:05:50 [INFO:1512]: Server started successfully
+16:05:50 [WARN:1557]: Server overload: skipping 43 ticks
+16:05:52 [INFO:162]: asd (0) joined the game. Total: 1
+16:05:54 [INFO:1415]: Room 0 started
+16:05:54 [WARN:1557]: Server overload: skipping 32 ticks
+16:06:13 [INFO:351]: asd left the game. Total: 1
+16:06:14 [INFO:1393]: Room 0 stoped
+16:06:14 [WARN:1557]: Server overload: skipping 17 ticks
+16:06:14 [INFO:124]: asd rejoined the game. Total: 1
+16:06:16 [INFO:1415]: Room 0 started
+16:06:16 [WARN:1557]: Server overload: skipping 15 ticks
+16:06:23 [INFO:1510]: Thu Feb 01 2018 16:06:23 GMT+0300 (RTZ 2 (зима))
+16:06:23 [INFO:1511]: Server version: 0.1.0
+16:06:23 [INFO:1512]: Server started successfully
+16:06:23 [WARN:1557]: Server overload: skipping 52 ticks
+16:06:24 [INFO:162]: asd (0) joined the game. Total: 1
+16:06:27 [INFO:1415]: Room 0 started
+16:06:27 [WARN:1557]: Server overload: skipping 49 ticks
+16:07:18 [INFO:351]: asd left the game. Total: 1
+16:07:18 [INFO:1393]: Room 0 stoped
+16:07:18 [WARN:1557]: Server overload: skipping 30 ticks
+16:07:19 [INFO:124]: asd rejoined the game. Total: 1
+16:07:21 [INFO:1415]: Room 1 started
+16:07:21 [WARN:1557]: Server overload: skipping 31 ticks
+16:07:30 [INFO:124]: asd rejoined the game. Total: 1
+16:07:37 [INFO:1510]: Thu Feb 01 2018 16:07:37 GMT+0300 (RTZ 2 (зима))
+16:07:37 [INFO:1511]: Server version: 0.1.0
+16:07:37 [INFO:1512]: Server started successfully
+16:07:37 [WARN:1557]: Server overload: skipping 65 ticks
+16:07:37 [WARN:1557]: Server overload: skipping 6 ticks
+16:07:39 [INFO:162]: asd (0) joined the game. Total: 1
+16:07:41 [INFO:1415]: Room 0 started
+16:07:41 [WARN:1557]: Server overload: skipping 33 ticks
+16:09:52 [INFO:1512]: Thu Feb 01 2018 16:09:52 GMT+0300 (RTZ 2 (зима))
+16:09:52 [INFO:1513]: Server version: 0.1.0
+16:09:52 [INFO:1514]: Server started successfully
+16:09:52 [WARN:1559]: Server overload: skipping 27 ticks
+16:09:54 [INFO:162]: asd (0) joined the game. Total: 1
+16:09:56 [INFO:1417]: Room 0 started
+16:09:56 [WARN:1559]: Server overload: skipping 31 ticks
+16:09:57 [WARN:1559]: Server overload: skipping 5 ticks
+16:15:05 [WARN:1559]: Server overload: skipping 6 ticks
+16:15:08 [WARN:1559]: Server overload: skipping 5 ticks
+16:24:57 [INFO:1395]: Room 0 stoped
+16:24:57 [WARN:1559]: Server overload: skipping 26 ticks

@@ -910,41 +910,49 @@ class Virus {
 		}
 
 		this.pos = this.processPos(npos);
-
 		if(this.mouseUpdated) {
-			var rpos = this.mousePos.div(CellSize);
-			rpos.x = Math.floor(rpos.x);
-			rpos.y = Math.floor(rpos.y);
-			if(this.mouseButton == 0) {
-				if(this.map.checkCoords(rpos.x, rpos.y) && this.workers >= 1) {
-					var block = this.map.get(rpos.x, rpos.y);
-					//var dist = block.physics.rpos.add(new Vector2(1 / 2, 1 / 2)).sub(this.physics.rpos.add(this.physics.size.diva(CellSize.x * 2))).abs();
-					if(this.energy >= block.energyCost || (block.id == 12 && this.energy >= block.energyCost / 10)) { 
-						if(this.map.breakBlock(rpos.x, rpos.y, this.id)) {
-							this.workers--;
-							if(block.id == 12) this.energy -= block.energyCost / 10;
-							else if(!block.needBlock) this.energy -= block.energyCost;
+			var rpos = this.mousePos.div(CellSize).round();
+			var neighbour = false;
+			let shift = [new Vector2(0, 0), new Vector2(-1, 0), new Vector2(1, 0), new Vector2(0, -1), new Vector2(0, 1)];
+			for(let i = 0; i < 5; i++) {
+				var t = rpos.add(shift[i]);
+				if(this.map.checkCoords(t.x, t.y) && this.map.get(t.x, t.y).owner == this.id) {
+					neighbour = true;
+					break;
+				}
+			}
+			if(neighbour) {
+				if(this.mouseButton == 0) {
+					if(this.map.checkCoords(rpos.x, rpos.y) && this.workers >= 1) {
+						var block = this.map.get(rpos.x, rpos.y);
+						//var dist = block.physics.rpos.add(new Vector2(1 / 2, 1 / 2)).sub(this.physics.rpos.add(this.physics.size.diva(CellSize.x * 2))).abs();
+						if(this.energy >= block.energyCost || (block.id == 12 && this.energy >= block.energyCost / 10)) { 
+							if(this.map.breakBlock(rpos.x, rpos.y, this.id)) {
+								this.workers--;
+								if(block.id == 12) this.energy -= block.energyCost / 10;
+								else if(!block.needBlock) this.energy -= block.energyCost;
+							}
 						}
 					}
 				}
-			}
-			else if(this.mouseButton == 2) {
-				if(this.map.checkCoords(rpos.x, rpos.y) && this.workers >= 1 && this.energy >= 5 && this.stone >= 5) {
-					var block = this.map.get(rpos.x, rpos.y);
-					//var dist = block.physics.rpos.add(new Vector2(1 / 2, 1 / 2)).sub(this.physics.rpos.add(this.physics.size.diva(CellSize.x * 2))).abs();
-					//if(dist <= 5) {
-						var good = true;
-						rooms[this.network.room].players.forEach(function(item, i, arr) {
-							good = good && !block.physics.intersects(item.physics);
-						});
-						if(good && block.id == 0) {
-							block.id = 12;
-							block.owner = this.id;
-							this.energy -= 5;
-							this.stone -= 5;
-							this.map.updateBlock(Math.floor(rpos.x), Math.floor(rpos.y));
-						}
-					//}
+				else if(this.mouseButton == 2) {
+					if(this.map.checkCoords(rpos.x, rpos.y) && this.workers >= 1 && this.energy >= 5 && this.stone >= 5) {
+						var block = this.map.get(rpos.x, rpos.y);
+						//var dist = block.physics.rpos.add(new Vector2(1 / 2, 1 / 2)).sub(this.physics.rpos.add(this.physics.size.diva(CellSize.x * 2))).abs();
+						//if(dist <= 5) {
+							var good = true;
+							rooms[this.network.room].players.forEach(function(item, i, arr) {
+								good = good && !block.physics.intersects(item.physics);
+							});
+							if(good && block.id == 0) {
+								block.id = 12;
+								block.owner = this.id;
+								this.energy -= 5;
+								this.stone -= 5;
+								this.map.updateBlock(Math.floor(rpos.x), Math.floor(rpos.y));
+							}
+						//}
+					}
 				}
 			}
 			this.mouseUpdated = false;
@@ -1009,6 +1017,8 @@ class Block {
 		obj.textureOffset = this.textureOffset;
 		obj.multiTexture = this.multiTexture;
 		obj.multiTextureId = this.multiTextureId;
+		obj.owner = this.owner;
+		obj.active = this.active;
 		return obj;
 	}
 
