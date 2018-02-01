@@ -21,6 +21,18 @@ canvas {
     transform: translate(-50%, -50%);
 }
 
+.form-small {
+    width: 100%;
+    max-width: 400px;
+    padding: 0 25px;
+}
+
+.form-medium {
+    width: 100%;
+    max-width: 600px;
+    padding: 0 25px;
+}
+
 #inventory {
     position: absolute !important;
     bottom: 25px;

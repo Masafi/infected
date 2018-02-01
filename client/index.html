@@ -8,8 +8,8 @@
 	<title>Infected</title>
 	<link rel="stylesheet" type="text/css" href="css/styles.css">
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
-	<link href="https://gitcdn.github.io/bootstrap-toggle/2.2.2/css/bootstrap-toggle.min.css" rel="stylesheet">
-	<script src="https://code.jquery.com/jquery-3.2.1.js" integrity="sha256-DZAnKJ/6XZ9si04Hgrsxu/8s717jcIzLy3oi35EouyE=" crossorigin="anonymous"></script>
+	<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.2.1.js" integrity="sha256-DZAnKJ/6XZ9si04Hgrsxu/8s717jcIzLy3oi35EouyE=" crossorigin="anonymous"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js" integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh" crossorigin="anonymous"></script>
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js" integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ" crossorigin="anonymous"></script>
 	<link rel="icon" type="image/png" href="favicon.png">
@@ -24,22 +24,21 @@
 	<canvas id="game" width="500" height="500" onmousedown="mouseDown(event, this)" onmousemove="mouseMoved(event, this)" oncontextmenu="event.preventDefault()">
 	</canvas>
 
-	<div id="login-form" class="align-abs-center col-lg-3">
+	<div id="login-form" class="align-abs-center form-small">
 		<div class="card">
-			<h4 class="card-header text-center">Authentication</h4>
+			<h2 class="card-header text-center">Infection.io</h2>
 			<div class="card-body">
 				<div class="form-group">
 					<input id="login-input" class="form-control" type="text" placeholder="Nickname" onkeydown="if (event.keyCode == 13) play()">
 					<div class="invalid-feedback">Wrong username</div>
 				</div>
-				<button id="login-humans-button" class="btn btn-success btn-block">Humans</button>
-				<button id="login-virus-button" class="btn btn-danger btn-block" style="display: none;">Virus</button>
 				<button id="login-button" class="btn btn-primary btn-block">Play</button>
 			</div>
 			<div id="login-error" class="card-footer text-danger text-center" style="display: none;"></div>
 		</div>
 	</div>
-	<div id="rooms-form" class="align-abs-center col-lg-3" style="display: none;">
+
+	<div id="rooms-form" class="align-abs-center form-small" style="display: none;">
 		<div class="card text-center">
 			<h4 class="card-header">Available rooms</h4>
 			<div class="card-body">
@@ -48,40 +47,41 @@
 			</div>
 		</div>
 	</div>
-	<div id="players-form" class="align-abs-center col-lg-5" style="display: none;">
+
+	<div id="players-form" class="align-abs-center form-medium" style="display: none;">
 		<div class="card text-center">
-			<h4 class="card-header"></h4>
+			<div class="card-header d-flex align-items-center">
+                <button id="leave-button" class="btn btn-outline-dark">
+                    <i class="fa fa-arrow-left" aria-hidden="true"></i>
+                </button>
+                <h4 class="w-100 mb-0"></h4>
+                <button class="btn btn-outline-dark">
+                    <i class="fa fa-users" aria-hidden="true"></i>
+                </button>
+            </div>
 			<div class="card-body">
 				<div class="row">
-					<div class="col-lg-6">
-						<ul id="players-list-humans" class="list-group">
-							<li class="list-group-item bg-success text-white list-group-item-action">Humans</li>
-						</ul>
+					<div class="col-lg-6 form-group">
+                        <button class="btn btn-success btn-block btn-lg mb-3" onclick="joinSide(0)">Humans</button>
+						<div id="players-list-humans" class="list-group"></div>
 					</div>
-					<div class="col-lg-6">
-						<ul id="players-list-virus" class="list-group">
-							<li class="list-group-item bg-danger text-white list-group-item-action">Virus</li>
-						</ul>
+					<div class="col-lg-6 form-group">
+                        <button class="btn btn-danger btn-block btn-lg mb-3" onclick="joinSide(1)">Virus</button>
+						<div id="players-list-virus" class="list-group"></div>
 					</div>
 				</div>
-				<p class="text-muted mt-3 mb-0">Тут могла быть ваша реклама</p>
+				<p class="text-muted mb-0">Тут могла быть ваша реклама</p>
 			</div>
 			<div class="card-footer">
-				<div id="players-footer-default" class="row">
-					<div class="col-lg-4">
-						<button id="switch-team-button" class="btn btn-primary btn-block">Change Team</button>
-					</div>
-					<div class="col-lg-4">
-						<button id="leave-button" class="btn btn-primary btn-block">Leave Room</button>
-					</div>
-					<div class="col-lg-4">
-						<button id="ready-button" class="btn btn-primary btn-block">Ready</button>
-					</div>
+				<div id="players-footer-default" class="d-flex align-items-center justify-content-between">
+					<p class="mb-0">Waiting for more players...</p>
+					<button id="ready-button" class="btn btn-primary">Ready</button>
 				</div>
 			</div>
 		</div>
 	</div>
-	<div id="loading-form" class="align-abs-center col-lg-5" style="display: none;">
+
+	<div id="loading-form" class="align-abs-center form-medium" style="display: none;">
 		<div class="card text-center">
 			<h4 class="card-header">Loading...</h4>
 			<div class="card-body">
@@ -91,6 +91,7 @@
 			</div>
 		</div>
 	</div>
+
 	<!-- Отсюда можно копировать элементы для динамической подгрузки !-->
 	<div style="display: none;">
 		<div id="rooms-list-item">
@@ -104,6 +105,7 @@
 			</li>
 		</div>
 	</div>
+
 	<div id="inventory" style="display: none;">
         <div class="card text-center">
             <div class="card-body py-2">

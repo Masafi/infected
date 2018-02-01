@@ -76,19 +76,21 @@ socket.on('requestToken', function() {
 });
 
 socket.on('updateRoom', function(data, id) {
-	$('#players-list-humans > *:not(:first)').remove();
-	$('#players-list-virus > *:not(:first)').remove();
-	$('#ready-button').removeClass('disabled');
-	$('#rooms-form').hide();
-	$('#players-form').show();
-	$('#players-form').find('h4').text('Room ' + (id + 1));
-	data.forEach(function(item, i, arr) {
-		var parent = item.side ? $('#players-list-virus') : $('#players-list-humans');
-		var element = $('#players-list-item > *').clone();
-		element.prepend(item.name);
-		if(item.ready) element.find('span').show();
-		parent.append(element);
-	});
+	if(!isGameStarted) {
+		$('#players-list-humans').empty();
+		$('#players-list-virus').empty();
+		$('#ready-button').removeClass('disabled');
+		$('#rooms-form').hide();
+		$('#players-form').show();
+		$('#players-form').find('h4').text('Room ' + (id + 1));
+		data.forEach(function(item, i, arr) {
+			var parent = item.side ? $('#players-list-virus') : $('#players-list-humans');
+			var element = $('#players-list-item > *').clone();
+			element.prepend(item.name);
+			if(item.ready) element.find('span').show();
+			parent.append(element);
+		});
+	}
 });
 
 socket.on('gameStarted', function() {
@@ -148,28 +150,16 @@ function ready() {
 	socket.emit('ready', token, isReady);
 }
 
-function switchSide() {
-	socket.emit('switchSide', token);
+function joinSide(_team) {
+	socket.emit('joinSide', token, _team);
 }
 
 $(document).ready(function() {
 	// Обработчик кнопки авторизации
 	$('#login-button').click(play);
 
-	// Выбор команды
-	function toggleTeam() {
-		team = !team;
-		$('#login-humans-button').toggle();
-		$('#login-virus-button').toggle();
-	}
-	$('#login-humans-button').click(toggleTeam);
-	$('#login-virus-button').click(toggleTeam);
-
 	// Выход с хаты
 	$('#leave-button').click(leave);
-
-	// Смена команды
-	$('#switch-team-button').click(switchSide);
 
 	// Кнопка ready
 	$('#ready-button').click(ready);
