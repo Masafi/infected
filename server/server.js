@@ -107,20 +107,28 @@ io.on('connection', function(socket) {
 		if(good) {
 			socket.join('users');
 			var usr = usersNetwork({'token': token}).first();
-			usr.socket = socket;
+			usr.network.socket = socket;
 			usr.network.left = false;
 			usr.network.makeToken();
 			usr.token = usr.network.token;
 			socket.emit('reg-success', usr.token, usr.id, usr.network.name);
 			var room = usr.network.room;
-			if(room >= 0 && room < rooms.length && rooms[room].started) {
+			if(room >= 0 && room < rooms.length) {
 				socket.join('room' + room);
-				socket.emit('gameStarted');
+				if(rooms[room].started) {
+					socket.emit('gameStarted', usr.network.side, usr.network.gameId);
+				}
+				else {
+					rooms[room].emitRoom();
+				}
 			}
 			else {
 				socket.join('lobby');
 			}
 			log(usr.network.name + " rejoined the game. Total: " + usersNetwork().count());
+		}
+		else {
+			socket.emit('reg-error', "Token extension error");
 		}
 	});
 
@@ -166,7 +174,7 @@ io.on('connection', function(socket) {
 		if(verifyToken(token)) {
 			var network = usersNetwork({'token': token}).first().network;
 			if(room >= 0 && room < rooms.length && network.room == -1 && !rooms[room].started && (rooms[room].cntSides[0] < mxPlayers || rooms[room].cntSides[1] < mxPlayers)) {
-				var side = (rooms[room].cntSides[0] <= mxPlayers ? 0 : 1);
+				var side = (rooms[room].cntSides[0] <= rooms[room].cntSides[1] ? 0 : 1);
 				network.side = side;
 				network.room = room;
 				network.roomId = rooms[room].network.length;
@@ -219,6 +227,9 @@ io.on('connection', function(socket) {
 			}
 			rooms[room].emitRoom();
 		}
+		else {
+			socket.emit('reg-error', "Token extension error");
+		}
 	});
 
 	socket.on('ready', function(token, val) {
@@ -229,6 +240,9 @@ io.on('connection', function(socket) {
 				network.ready = val;
 				rooms[room].emitRoom();
 			}
+		}
+		else {
+			socket.emit('reg-error', "Token extension error");
 		}
 	});
 
@@ -272,6 +286,9 @@ io.on('connection', function(socket) {
 				data.push(obj);
 			});
 			socket.emit('rooms', data);
+		}
+		else {
+			socket.emit('reg-error', "Token extension error");
 		}
 	});
 
@@ -745,7 +762,6 @@ class Player {
 		if(block.damage && this.lastDamageTime >= 1) {
 			this.physics.vel.y = -300;
 			this.hp -= block.damage;
-			this.hp = Math.max(10, this.hp);
 			this.lastDamageTime = 0;
 		}
 	}
@@ -755,8 +771,6 @@ class Player {
 		this.processKeys(dt);
 		this.physics.vel = this.physics.updateSpeed(dt);
 		this.physics.standing = false;
-		this.coef.x += dt / 2;
-		this.coef.x = Math.min(1, this.coef.x);
 		
 		//Collision
 		var collisionObjects = [];
@@ -819,8 +833,9 @@ class Virus {
 		rpos.x = Math.floor(rpos.x);
 		rpos.y = Math.floor(rpos.y);
 		this.core = map.get(rpos.x, rpos.y);
-		this.core.id = 12;
+		this.core.id = 13;
 		this.core.owner = this.id;
+		this.alive = true;
 		this.map.emitBlock(rpos.x, rpos.y);
 	}
 
@@ -963,6 +978,10 @@ class Virus {
 
 	tickUpdate(dt) {
 		this.processKeys(dt);
+
+		if(this.core.id != 13 || this.core.owner != this.id) {
+			this.alive = false;
+		}
 	}
 }
 
@@ -999,7 +1018,6 @@ class Block {
 			this.breakTimer += dt;
 			if(this.breakTimer >= this.breakTime / this.koef) {
 				this.isBreaking = false;
-				this.id = 0;
 				result.changed = true;
 			}
 		}
@@ -1028,27 +1046,45 @@ class Block {
 		if(this.multiTexture) {
 			var type = 8;
 			var self = this;
+			var onlyMe = this.id == 12;
 			var check = function(i, j) {
-				return self.map.checkCoords(i, j) && !self.map.get(i, j).solid;
+				return self.map.checkCoords(i, j) && (!self.map.get(i, j).solid && !onlyMe || (self.map.get(i, j).id != self.id && self.map.get(i, j).id != 13) && onlyMe);
 			}
 			var x = this.physics.rpos.x;
 			var y = this.physics.rpos.y;
 			var neigh = check(x, y - 1) * 8 + check(x + 1, y) * 4 + check(x, y + 1) * 2 + check(x - 1, y);
-			if(neigh == 0b1111 || neigh == 0b0000 || neigh == 0b0101 || neigh == 0b1010) type = 8;
-			else if(neigh == 0b1000 || neigh == 0b1101) type = 1;
-			else if(neigh == 0b0100 || neigh == 0b1110) type = 3;
-			else if(neigh == 0b0010 || neigh == 0b0111) type = 5;
-			else if(neigh == 0b0001 || neigh == 0b1011) type = 7;
-			else if(neigh == 0b1001) type = 0;
-			else if(neigh == 0b1100) type = 2;
-			else if(neigh == 0b0110) type = 4;
-			else if(neigh == 0b0011) type = 6;
-			if(this.id == 1 && type > 2) type = 1;
+			var seq = undefined;
+			if(this.multiTexture == 1) {
+				seq = [1, 0, 1, 0, 2, 1, 2, 1, 1, 0, 1, 0, 2, 1, 2, 1];
+			}
+			else if(this.multiTexture == 2) {
+				seq = [8, 7, 5, 6, 3, 8, 4, 5, 1, 0, 8, 7, 2, 1, 3, 8];
+			}
+			else {
+				seq = [8, 7, 5, 6, 3, 13, 4, 11, 1, 0, 14, 12, 2, 9, 10, 15];
+			}
+			type = seq[neigh];
+			if(type != this.multiTextureId && this.id == 12) {
+				this.multiTextureId = type;
+				this.map.emitBlock(x, y);
+			}
 			this.multiTextureId = type;
 		}
 	}
 
+	updateBlockTexture() {
+		let cur = new Vector2(this.physics.rpos.x, this.physics.rpos.y);
+		let shift = [new Vector2(0, 0), new Vector2(-1, 0), new Vector2(1, 0), new Vector2(0, -1), new Vector2(0, 1)];
+		for(let i = 0; i < 5; i++) {
+			let tmp = cur.add(shift[i]);
+			if(this.map.checkCoords(tmp.x, tmp.y) && this.map.get(tmp.x, tmp.y).id == 12) {
+				this.map.get(tmp.x, tmp.y).updateMultiTexture();
+			}
+		}
+	}
+
 	set id(nid) {
+		var updTex = nid == 12 || this._id == 12;
 		this._id = nid;
 		var info = blockInfo[nid];
 		this.solid = info.solid;
@@ -1063,6 +1099,7 @@ class Block {
 		this.multiTextureId = 8;
 		this.damage = info.damage;
 		this.owner = -1;
+		if(updTex) this.updateBlockTexture();
 	}
 
 	get id() {
@@ -1197,6 +1234,16 @@ class GameMap {
 		}
 	}
 
+	recreate() {
+		this.updateQueue.length = 0;
+		for(let i = 0; i < mapSize.x / chunkSize; i++) {
+			this.map[i].length = 0;
+			for(let j = 0; j < mapSize.y / chunkSize; j++) {
+				this.map[i].push(new Chunk(new Vector2(i, j), this));
+			}
+		}
+	}
+
 	generateMap() {
 		var height = [];
 		var seed = Math.random() * 10;
@@ -1275,7 +1322,7 @@ class GameMap {
 	}
 
 	checkCoords(i, j) {
-		return i >= 0 && j >= 0 && i < mapSize.x && j < mapSize.y;
+		return i != undefined && j != undefined && i >= 0 && j >= 0 && i < mapSize.x && j < mapSize.y;
 	}
 
 	getChunk(i, j) {
@@ -1340,6 +1387,38 @@ class GameMap {
 		return false;
 	}
 
+	onBreaking(i, j, source) {
+		var block = this.get(i, j);
+		var stoneCost = block.stoneCost;
+		var pl;
+		if(source.side == 0) pl = rooms[source.room].players[source.gameId];
+		else pl = rooms[source.room].viruses[source.gameId];
+		if(pl) {
+			pl.workers++;
+			pl.stone += stoneCost;
+		}
+		if(this.checkCoords(i, j - 1) && this.get(i, j - 1).needBlock) {
+			this.breakBlock(i, j - 1, source.roomId);
+			if(pl) {
+				pl.workers--;
+			}
+		}
+		// if(block.owner >= 0) {
+		// 	var owner = rooms[this.room].network[block.owner];
+		// 	if(owner.side == 0) {
+		// 		owner = rooms[owner.room].players[owner.gameId];
+		// 	}
+		// 	else {
+		// 		owner = rooms[owner.room].viruses[owner.gameId];
+
+		// 		if(owner.core.rpos.x == i && owner.core.rpos.y == j) {
+		// 			owner.alive = false;
+		// 		}
+		// 	}
+		// }
+		block.id = 0;
+	}
+
 	update(dt) {
 		var nq = [];
 		var self = this;
@@ -1348,26 +1427,13 @@ class GameMap {
 			var i = item.rpos.x;
 			var j = item.rpos.y;
 			var block = self.get(i, j);
-			var stoneCost = block.stoneCost;
 			var res = block.update(dt);
 			if(res.update) {
 				nq.push(item);
 			}
 			if(res.changed) {
 				var net = rooms[this.room].network[item.info];
-				var pl;
-				if(net.side == 0) pl = rooms[net.room].players[net.gameId];
-				else pl = rooms[net.room].viruses[net.gameId];
-				if(pl) {
-					pl.workers++;
-					pl.stone += stoneCost;
-				}
-				if(self.checkCoords(i, j - 1) && self.get(i, j - 1).needBlock) {
-					self.breakBlock(i, j - 1, item.info);
-					if(pl) {
-						pl.workers--;
-					}
-				}
+				this.onBreaking(i, j, net);
 			}
 			if(!res.update || res.changed) {
 				self.emitBlock(i, j);
@@ -1380,16 +1446,32 @@ class GameMap {
 class Room {
 	constructor(id) {
 		this.id = id;
+		this.players = [];
+		this.viruses = [];
+		this.network = [];
 
 		this.restart();
 	}
 
 	restart() {
 		var first = this.map == undefined;
-		this.map = new GameMap(this.id);
-		this.players = [];
-		this.viruses = [];
-		this.network = [];
+		if(!first) {
+			this.network.forEach(function(item, i, arr) {
+				item.room = -1;
+				item.roomId = -1;
+				item.ready = false;
+			});
+		}
+		else {
+			this.map = new GameMap(this.id);
+			this.map.generateMap();
+		}
+		if(this.id > 0) {
+			this.map.recreate();
+		}
+		this.players.length = 0;
+		this.viruses.length = 0;
+		this.network.length = 0;;
 		this.cntSides = [0, 0];
 		this.started = false;
 		this.startedTime = new Date();
@@ -1400,7 +1482,9 @@ class Room {
 
 	start() {
 		var self = this;
-		this.map.generateMap();
+		if(this.id > 0) {
+			this.map.generateMap();
+		}
 		this.network.forEach(function(item, i, arr) {
 			if(item.side == 0) {
 				item.gameId = self.players.length;
@@ -1447,6 +1531,7 @@ class Room {
 		this.online = 0;
 		var data = [];
 		var self = this;
+		var tempPlayers = [];
 		this.players.forEach(function (player, i, arr) {
 			self.online += !player.network.left;
 			//Processing physics
@@ -1463,8 +1548,19 @@ class Room {
 			iData.stone = player.stone;
 			iData.iron = player.iron;
 			iData.hp = player.hp;
+			if(player.hp > 0) {
+				tempPlayers.push(player);
+			}
+			else {
+				player.network.room = -1;
+				player.network.roomId = -1;
+				player.network.ready = false;
+				player.network.socket.emit('gameOver');
+			}
 			data.push(iData);
 		});
+		this.players = tempPlayers;
+		var tempVirus = [];
 		this.viruses.forEach(function (virus, i, arr) {
 			self.online += !virus.network.left;
 			//Processing physics
@@ -1478,8 +1574,18 @@ class Room {
 			iData.energy = virus.energy;
 			iData.stone = virus.stone;
 			iData.iron = virus.iron;
+			if(virus.alive) {
+				tempVirus.push(virus);
+			}
+			else {
+				virus.network.room = -1;
+				virus.network.roomId = -1;
+				virus.network.ready = false;
+				virus.network.socket.emit('gameOver');
+			}
 			virus.network.socket.emit('update-virus', iData);
 		});
+		this.viruses = tempVirus;
 		this.map.update(dt);
 		if(!this.online || new Date() - this.startedTime >= 1000 * 60 * 15) {
 			io.to('room' + this.id).emit('gameOver');
@@ -1506,7 +1612,7 @@ class Room {
 }
 
 function setup() {
-	for(let i = 0; i < 2; i++) {
+	for(let i = 0; i < 3; i++) {
 		rooms.push(new Room(i));
 	}
 	setInterval(tick, 16);

@@ -4,6 +4,7 @@ var chunksGot = 0;
 var team = false;
 var side = 0;
 var roomId = 0;
+var isReady = false;
 
 function setup() {
 	token = Cookies.get('token');
@@ -13,8 +14,8 @@ function setup() {
 setup();
 
 socket.on('reg-error', function(errText) {
-	$('#login-error').html('<b>Error:</b> ' + errText);
-	$('#login-error').show();
+	//$('#login-error').html('<b>Error:</b> ' + errText);
+	//$('#login-error').show();
 	deactivateGame(true);
 });
 
@@ -127,22 +128,43 @@ function activateGame() {
 	enableGame();
 }
 
+function eraseStage(stage) {
+	if(stage) {
+		for (var i = stage.children.length - 1; i >= 0; i--) {	
+			stage.removeChild(stage.children[i]);
+		}
+	}
+}
+
 function deactivateGame(force) {
 	if(force) {
 		$('#login-form').show();
 	}
 	else {
-		$('rooms-form').show();
+		$('#rooms-form').show();
 		socket.emit('requestRooms', token);
 	}
+	isReady = false;
 	document.getElementById('inventory').style.display = 'none';
+	if(isGameStarted) {
+		if (screenStage) {
+			screenStage.removeChild(gameScene);
+		}
+		eraseStage(objects);
+		if(chunkScenes) {
+			chunkScenes.forEach(function(item, i, arr) {
+				item.forEach(function(stage, j, arr) {
+					eraseStage(stage);
+				});
+			});
+		}
+		console.log("Game over!");
+		map.recreate();
+		players = new Map();
+	}
+
 	isGameActive = false;
 	isGameStarted = false;
-	if (screenStage) {
-		screenStage.removeChild(gameScene);
-	}
-	console.log("Game over!");
-	map = new GameMap();
 }
 
 function chooseRoom(id) {
@@ -155,8 +177,6 @@ function leave() {
 	$('#rooms-form').show();
 	socket.emit('requestRooms', token);
 }
-
-var isReady = false;
 
 function ready() {
 	isReady = !isReady;

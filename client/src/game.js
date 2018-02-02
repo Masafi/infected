@@ -206,7 +206,7 @@ class Player {
 		this.nameSprite = new GraphicsPrimitive();
 		this.nameSprite.sprite = new PIXI.Text(name, {fontFamily: "Arial", fontSize: 16, fill: "Black", stroke: '#000', strokeThickness: 0});
 		this.nameSprite.sprite.anchor.set(0.5, 1);
-		this.nameSprite.stageToScene(gameScene);
+		this.nameSprite.stageToScene(objects);
 		this.name = name;
 		this.updated = true;
 		this.workers = 3;
@@ -380,16 +380,6 @@ class Block {
 		}
 	}
 
-	updateSprite() {
-		if(!this.multiTexture) {
-			this.graphics.sprite.texture = PIXI.Texture.fromFrame('sprite_' + (this.id < 10 ? '0' : '') + this.id + '.png');
-		}
-		else {
-			this.graphics.sprite.texture = PIXI.Texture.fromFrame('sprite_' + (this.id < 10 ? '0' : '') + this.id + '_' +
-											(this.multiTextureId < 10 ? '0' : '') + this.multiTextureId + '.png');
-		}
-	}
-
 	set id(nid) {
 		if(this._id != nid) {
 			if(this.breakingAnim && this.breakingAnim.sprite) {
@@ -423,6 +413,9 @@ class Chunk {
 		for(let i = 0; i < chunkSize; i++) {
 			this.chunk.push([]);
 			for(let j = 0; j < chunkSize; j++) {
+				if(!chunkScenes[rpos.x]) {
+					console.log(chunkScenes);
+				}
 				this.chunk[i].push(new Block(chunkScenes[rpos.x][rpos.y]));
 				this.chunk[i][j].physics.rpos = new Vector2(i, j).add(this.physics.pos);
 			}
@@ -484,6 +477,17 @@ class Chunk {
 class GameMap {
 	constructor() {
 		this.map = [];
+		for(let i = 0; i < mapSize.x / chunkSize; i++) {
+			this.map.push([]);
+			for(let j = 0; j < mapSize.y / chunkSize; j++) {
+				this.map[i].push(new Chunk(new Vector2(i, j)));
+			}
+		}
+		this.updateQueue = [];
+	}
+
+	recreate() {
+		this.map.length = 0;
 		for(let i = 0; i < mapSize.x / chunkSize; i++) {
 			this.map.push([]);
 			for(let j = 0; j < mapSize.y / chunkSize; j++) {
@@ -730,7 +734,7 @@ function enableGame() {
 		if(side) {
 			virus = new Virus();
 		}
-		console.log("Game started!");
+		console.log("Game started! " + side);
 		screenStage.addChild(gameScene);
 	}
 }
