@@ -2714,3 +2714,39 @@
 21:12:26 [INFO:1479]: Room 0 stoped
 21:12:26 [INFO:128]: Masafi rejoined the game. Total: 1
 21:12:28 [INFO:1503]: Room 0 started
+21:33:45 [INFO:1620]: Fri Feb 02 2018 21:33:45 GMT+0300 (RTZ 2 (зима))
+21:33:45 [INFO:1621]: Server version: 0.1.0
+21:33:45 [INFO:1622]: Server started successfully
+21:33:45 [WARN:1667]: Server overload: skipping 94 ticks
+21:33:51 [INFO:169]: Masafi (0) joined the game. Total: 1
+21:33:54 [INFO:1503]: Room 0 started
+21:33:55 [WARN:1667]: Server overload: skipping 10 ticks
+21:34:16 [INFO:1479]: Room 0 stoped
+21:34:22 [INFO:1503]: Room 0 started
+21:34:23 [WARN:1667]: Server overload: skipping 5 ticks
+21:34:49 [WARN:1667]: Server overload: skipping 18 ticks
+21:34:49 [INFO:1479]: Room 0 stoped
+21:35:10 [WARN:1667]: Server overload: skipping 5 ticks
+21:35:20 [WARN:1667]: Server overload: skipping 5 ticks
+21:35:56 [WARN:1667]: Server overload: skipping 5 ticks
+21:56:55 [INFO:1625]: Fri Feb 02 2018 21:56:55 GMT+0300 (RTZ 2 (зима))
+21:56:55 [INFO:1626]: Server version: 0.1.0
+21:56:55 [INFO:1627]: Server started successfully
+21:56:55 [WARN:1672]: Server overload: skipping 82 ticks
+21:57:03 [INFO:174]: ad (0) joined the game. Total: 1
+21:57:05 [INFO:1508]: Room 0 started
+21:57:07 [WARN:1672]: Server overload: skipping 13 ticks
+21:57:21 [WARN:1672]: Server overload: skipping 5 ticks
+21:57:34 [INFO:1484]: Room 0 stoped
+21:57:38 [INFO:1508]: Room 0 started
+22:01:20 [INFO:1627]: Fri Feb 02 2018 22:01:20 GMT+0300 (RTZ 2 (зима))
+22:01:20 [INFO:1628]: Server version: 0.1.0
+22:01:20 [INFO:1629]: Server started successfully
+22:01:20 [WARN:1674]: Server overload: skipping 92 ticks
+22:01:33 [ERR:84]: ReferenceError: atggrs is not defined
+    at Socket.<anonymous> (C:\js\infected\server\server.js:144:26)
+    at emitTwo (events.js:106:13)
+    at Socket.emit (events.js:191:7)
+    at C:\js\infected\node_modules\socket.io\lib\socket.js:514:12
+    at _combinedTickCallback (internal/process/next_tick.js:73:7)
+    at process._tickCallback (internal/process/next_tick.js:104:9)

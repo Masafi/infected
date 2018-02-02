@@ -80,6 +80,11 @@ function log(string, warn = 0) {
 	logStdout.write(pref + util.format(string) + '\n');
 }
 
+process.on('uncaughtException', function(err) {
+	log(err, 2);
+	process.exit(1);
+});
+
 function reqId() {
 	var i = 0;
 	for(; usersNetwork({'id': i}).count() > 0; i++);
