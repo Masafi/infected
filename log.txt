@@ -210,3 +210,46 @@
 22:02:35 [INFO:1517]: Room 0 started
 22:02:41 [WARN:1676]: Server overload: skipping 6 ticks
 22:03:01 [INFO:1493]: Room 0 stoped
+22:51:38 [INFO:1629]: Mon Feb 05 2018 22:51:38 GMT+0300 (RTZ 2 (зима))
+22:51:38 [INFO:1630]: Server version: 0.1.1
+22:51:38 [INFO:1631]: Server started successfully
+22:51:38 [WARN:1676]: Server overload: skipping 108 ticks
+22:51:41 [INFO:175]: asd (0) joined the game. Total: 1
+22:51:42 [INFO:1517]: Room 0 started
+22:51:44 [WARN:1676]: Server overload: skipping 8 ticks
+22:51:50 [ERR:68]: TypeError: Cannot read property 'side' of undefined
+    at GameMap.breakBlock (C:\js\infected\server\server.js:1397:10)
+    at GameMap.onBreaking (C:\js\infected\server\server.js:1416:9)
+    at GameMap.update (C:\js\infected\server\server.js:1450:10)
+    at Room.updateGame (C:\js\infected\server\server.js:1598:12)
+    at Room.tick (C:\js\infected\server\server.js:1618:9)
+    at C:\js\infected\server\server.js:1680:8
+    at Array.forEach (native)
+    at Timeout.tick [as _onTimeout] (C:\js\infected\server\server.js:1679:8)
+    at ontimeout (timers.js:386:11)
+    at tryOnTimeout (timers.js:250:5)
+22:54:11 [INFO:1629]: Mon Feb 05 2018 22:54:11 GMT+0300 (RTZ 2 (зима))
+22:54:11 [INFO:1630]: Server version: 0.1.1
+22:54:11 [INFO:1631]: Server started successfully
+22:54:11 [WARN:1676]: Server overload: skipping 90 ticks
+22:54:16 [INFO:175]: Masafi (0) joined the game. Total: 1
+22:54:18 [INFO:1517]: Room 0 started
+22:54:19 [WARN:1676]: Server overload: skipping 8 ticks
+22:54:20 [ERR:68]: TypeError: Cannot read property 'side' of undefined
+    at GameMap.breakBlock (C:\js\infected\server\server.js:1397:10)
+    at Player.processKeys (C:\js\infected\server\server.js:740:19)
+    at Player.tickUpdate (C:\js\infected\server\server.js:779:8)
+    at C:\js\infected\server\server.js:1552:11
+    at Array.forEach (native)
+    at Room.updateGame (C:\js\infected\server\server.js:1549:16)
+    at Room.tick (C:\js\infected\server\server.js:1618:9)
+    at C:\js\infected\server\server.js:1680:8
+    at Array.forEach (native)
+    at Timeout.tick [as _onTimeout] (C:\js\infected\server\server.js:1679:8)
+22:55:05 [INFO:1628]: Mon Feb 05 2018 22:55:05 GMT+0300 (RTZ 2 (зима))
+22:55:05 [INFO:1629]: Server version: 0.1.1
+22:55:05 [INFO:1630]: Server started successfully
+22:55:05 [WARN:1675]: Server overload: skipping 152 ticks
+22:55:06 [INFO:175]: asd (0) joined the game. Total: 1
+22:55:08 [INFO:1516]: Room 0 started
+22:55:09 [WARN:1675]: Server overload: skipping 8 ticks

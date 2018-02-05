@@ -737,7 +737,7 @@ class Player {
 					var block = this.map.get(rpos.x, rpos.y);
 					var dist = block.physics.rpos.add(new Vector2(1 / 2, 1 / 2)).sub(this.physics.rpos.add(this.physics.size.diva(CellSize.x * 2))).abs();
 					if(dist <= 5 && this.energy >= block.energyCost) { 
-						if(this.map.breakBlock(rpos.x, rpos.y, this.id)) {
+						if(this.map.breakBlock(rpos.x, rpos.y, {gameId: this.network.gameId, side: this.network.side})) {
 							this.workers--;
 							if(!block.needBlock) this.energy -= block.energyCost;
 						}
@@ -959,7 +959,7 @@ class Virus {
 						var block = this.map.get(rpos.x, rpos.y);
 						//var dist = block.physics.rpos.add(new Vector2(1 / 2, 1 / 2)).sub(this.physics.rpos.add(this.physics.size.diva(CellSize.x * 2))).abs();
 						if(this.energy >= block.energyCost || (block.id == 12 && this.energy >= block.energyCost / 10)) { 
-							if(this.map.breakBlock(rpos.x, rpos.y, this.id)) {
+							if(this.map.breakBlock(rpos.x, rpos.y, {gameId: this.network.gameId, side: this.network.side})) {
 								this.workers--;
 								if(block.id == 12) this.energy -= block.energyCost / 10;
 								else if(!block.needBlock) this.energy -= block.energyCost;
@@ -1387,16 +1387,15 @@ class GameMap {
 		this.updateQueue.push({rpos: new Vector2(i, j), info: info});
 	}
 
-	breakBlock(i, j, id) {
+	breakBlock(i, j, info) {
 		var block = this.get(i, j);
 		if(block.breakable && !block.isBreaking){
 			block.isBreaking = true;
 			block.breakTimer = 0;
 			block.koef = 1;
-			var net = rooms[this.room].network[id];
-			if(net.side && block.id == 12) block.koef = 10;
+			if(info.side && block.id == 12) block.koef = 10;
 			io.to('room' + this.room).emit('blockBreaking', block.physics.rpos, block.koef);
-			this.updateBlock(i, j, {gameId: net.gameId, side: net.side});
+			this.updateBlock(i, j, info);
 			return true;
 		}
 		return false;
