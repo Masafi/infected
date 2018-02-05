@@ -682,14 +682,21 @@ function frame() {
 		else {
 			camera = virus.pos.sub(new Vector2(window.innerWidth / gScale / 2, window.innerHeight / gScale / 2));
 		}
+		var goodids = {};
 		gameData.forEach(function(item, i, arr) {
 			if(side == 0 && item.id == roomId) return;
+			goodids[item.id] = true;
 			if(!players.has(item.id)) {
 				var pl = new Player(item.name);
 				players.set(item.id, pl);
 			}
 			players.get(item.id).update(item, dt);
 		});
+		for(let i in players) {
+			if(!goodids[i[0]]) {
+				
+			}
+		}
 	}
 	//TODO: implement
 	// else {

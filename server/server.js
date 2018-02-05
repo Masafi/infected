@@ -7,17 +7,17 @@ var io = require('socket.io')(server, {
 	pingTimeout: 10000
 });
 var jwt = require('jsonwebtoken');
-var jwtSecretKey = "supersecrettodochange";
 var taffy = require('taffydb');
 var fs = require('fs');
 var csvParse = require('csv-parse');
 var path = '';
 var util = require('util');
 var sanitizeHtml = require('sanitize-html');
-var logFile = fs.createWriteStream('log.txt', { flags: 'a' });
+var logFile = fs.createWriteStream(path + 'log.txt', { flags: 'a' });
 var logStdout = process.stdout;
 
-var version = "0.1.0";
+var version = "0.1.1";
+var jwtSecretKey = "supersecrettodochange";
 
 //HTTP server
 var port = process.env.PORT || 80;
@@ -50,22 +50,6 @@ Object.defineProperty(global, '__line', {
   }
 });
 
-function verifyToken(token) {
-	var good = true;
-	if(token) {
-		jwt.verify(token, jwtSecretKey, function (err, decoded) {
-			if(err) {
-				good = false;	
-			}
-		});
-	}
-	else {
-		good = true;
-	}
-	good = good && usersNetwork({'token': token}).count() > 0;
-	return good;
-}
-
 function log(string, warn = 0) {
 	var d = new Date();
 	var p = (v) => { return (v < 10 ? '0' : '') + v; }
@@ -84,6 +68,22 @@ process.on('uncaughtException', function(err) {
 	log(err, 2);
 	process.exit(1);
 });
+
+function verifyToken(token) {
+	var good = true;
+	if(token) {
+		jwt.verify(token, jwtSecretKey, function (err, decoded) {
+			if(err) {
+				good = false;	
+			}
+		});
+	}
+	else {
+		good = false;
+	}
+	good = good && usersNetwork({'token': token}).count() > 0;
+	return good;
+}
 
 function reqId() {
 	var i = 0;
@@ -116,6 +116,7 @@ io.on('connection', function(socket) {
 			usr.network.left = false;
 			usr.network.makeToken();
 			usr.token = usr.network.token;
+			usr.socket = socket.id.toString();
 			socket.emit('reg-success', usr.token, usr.id, usr.network.name);
 			var room = usr.network.room;
 			if(room >= 0 && room < rooms.length) {
@@ -475,9 +476,9 @@ class PhysicPrimitive {
 		this._pos = new Vector2(0, 0);
 		this.size = new Vector2(0, 0);
 		this.vel = new Vector2(0, 0);
-		this.frameVel = new Vector2(0, 0);
 		this.acc = new Vector2(0, 0);
 		this._rpos = new Vector2(0, 0);
+		this.frameVel = new Vector2(0, 0);
 		this.rscale = CellSize.add(new Vector2(0, 0));
 		this.standing = false;
 		this.g = 1000;
@@ -493,7 +494,7 @@ class PhysicPrimitive {
 	}
 
 	brakes(dt) {
-		this.frameVel = this.vel.add(new Vector2(0, 0));
+		this.frameVel = this.vel.copy();
 		if(Math.abs(this.vel.x) <= this.slowDown.x * dt * 60) this.vel.x = 0;
 		else this.vel.x -= Math.sign(this.vel.x) * this.slowDown.x * dt * 60;
 	}
@@ -707,6 +708,8 @@ class Player {
 		this.iron = 100;
 		this.hp = 100;
 
+		this.alive = true;
+
 		this.lastDamageTime = 0;
 	}
 
@@ -748,7 +751,7 @@ class Player {
 					if(dist <= 5) {
 						var good = true;
 						rooms[this.network.room].players.forEach(function(item, i, arr) {
-							good = good && !block.physics.intersects(item.physics);
+							good = good && !block.physics.intersects(item.physics) && item.alive;
 						});
 						if(good && block.id == 0) {
 							block.id = 2;
@@ -811,6 +814,7 @@ class Player {
 		//Additional
 		this.physics.brakes(dt);
 		this.hp = Math.max(Math.min(100, this.hp), 0);
+		this.alive = this.hp > 0;
 		this.lastDamageTime += dt;
 		this.lastDamageTime = Math.min(10, this.lastDamageTime);
 	}
@@ -964,7 +968,7 @@ class Virus {
 						//if(dist <= 5) {
 							var good = true;
 							rooms[this.network.room].players.forEach(function(item, i, arr) {
-								good = good && !block.physics.intersects(item.physics);
+								good = good && !block.physics.intersects(item.physics) && item.alive;
 							});
 							if(good && block.id == 0) {
 								block.id = 12;
@@ -1536,7 +1540,6 @@ class Room {
 		this.online = 0;
 		var data = [];
 		var self = this;
-		var tempPlayers = [];
 		this.players.forEach(function (player, i, arr) {
 			self.online += !player.network.left;
 			//Processing physics
@@ -1553,19 +1556,16 @@ class Room {
 			iData.stone = player.stone;
 			iData.iron = player.iron;
 			iData.hp = player.hp;
-			if(player.hp > 0) {
-				tempPlayers.push(player);
-			}
-			else {
+			if(!player.alive) {
 				player.network.room = -1;
 				player.network.roomId = -1;
 				player.network.ready = false;
 				player.network.socket.emit('gameOver');
 			}
-			data.push(iData);
+			else {
+				data.push(iData);
+			}
 		});
-		this.players = tempPlayers;
-		var tempVirus = [];
 		this.viruses.forEach(function (virus, i, arr) {
 			self.online += !virus.network.left;
 			//Processing physics
@@ -1579,18 +1579,16 @@ class Room {
 			iData.energy = virus.energy;
 			iData.stone = virus.stone;
 			iData.iron = virus.iron;
-			if(virus.alive) {
-				tempVirus.push(virus);
-			}
-			else {
+			if(!virus.alive) {
 				virus.network.room = -1;
 				virus.network.roomId = -1;
 				virus.network.ready = false;
 				virus.network.socket.emit('gameOver');
 			}
-			virus.network.socket.emit('update-virus', iData);
+			else {
+				virus.network.socket.emit('update-virus', iData);
+			}
 		});
-		this.viruses = tempVirus;
 		this.map.update(dt);
 		if(!this.online || new Date() - this.startedTime >= 1000 * 60 * 15) {
 			io.to('room' + this.id).emit('gameOver');
@@ -1678,7 +1676,7 @@ function tick() {
 }
 
 function updatePlayers() {
-	log("Starting cleaning up");
+	log("Started cleaning up");
 	var res = usersNetwork().map(function(record, id) {
 		return [record.id, record.network.left && Date.now() - record.network.leftTime >= 1000 * 60 * 60];
 	});
