@@ -5,6 +5,7 @@ var team = false;
 var side = 0;
 var roomId = 0;
 var isReady = false;
+var tps = 0;
 
 function setup() {
 	token = Cookies.get('token');
@@ -60,6 +61,7 @@ socket.on('rooms', function(data) {
 });
 
 socket.on('update', function(data) {
+	tps++;
 	dataUpdated = false;
 	gameData = data;
 });

@@ -653,9 +653,10 @@ function frame() {
 	fps++;
 	if(fpstime >= 1) {
 		if(outputFPS) {
-			console.log(Math.floor(fps / fpstime));
+			console.log(Math.floor(fps / fpstime), Math.floor(tps / fpstime));
 		}
 		fps = 0;
+		tps = 0;
 		fpstime = 0;
 	}
 	if(!dataUpdated && isGameActive) {

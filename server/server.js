@@ -838,9 +838,7 @@ class Virus {
 		this.room = 0;
 
 		this.pos = new Vector2(((network.gameId + 1) * 2000 - 1000 + network.gameId) % (mapSize.x * CellSize.x), mapSize.y * CellSize.y / 2 + 10);
-		var rpos = this.pos.div(CellSize);
-		rpos.x = Math.floor(rpos.x);
-		rpos.y = Math.floor(rpos.y);
+		var rpos = this.pos.div(CellSize).round();
 		this.core = map.get(rpos.x, rpos.y);
 		this.core.id = 13;
 		this.core.owner = this.id;
@@ -848,27 +846,35 @@ class Virus {
 		this.map.emitBlock(rpos.x, rpos.y);
 	}
 
+	isGood(mid) {
+		for (let i = -4; i <= 4; i++) {
+			for (let j = -4; j <= 4; j++) {
+				if(this.map.checkCoords(mid.x + i, mid.y + j) && this.map.get(mid.x + i, mid.y + j).owner == this.id && this.map.get(mid.x + i, mid.y + j).active) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	checkPos(vpos) {
 		var npos = vpos.max(screenSize.div(2)).min(mapSize.mul(CellSize).sub(screenSize.div(2)));
 		var mid = npos.div(CellSize).round();
-		var good = false;
-		if(this.map.checkCoords(mid.x, mid.y) && this.map.get(mid.x, mid.y).owner == this.id && this.map.get(mid.x, mid.y).active) {
-			good = true;
-		}
+		var good = this.isGood(mid);
 		if(!good) {
 			var temp = mid.x;
 			var rpos = this.pos.div(CellSize);
 			mid.x = Math.floor(rpos.x);
-			if(this.map.checkCoords(mid.x, mid.y) && this.map.get(mid.x, mid.y).owner == this.id && this.map.get(mid.x, mid.y).active) {
+			good = this.isGood(mid);
+			if(good) {
 				npos.x = this.pos.x;
-				good = true;
 			}
 			if(!good) {
 				mid.x = temp;
 				mid.y = Math.floor(rpos.y);
-				if(this.map.checkCoords(mid.x, mid.y) && this.map.get(mid.x, mid.y).owner == this.id && this.map.get(mid.x, mid.y).active) {
+				good = this.isGood(mid);
+				if(good) {
 					npos.y = this.pos.y;
-					good = true;
 				}
 			}
 		}
@@ -895,7 +901,7 @@ class Virus {
 				let answ = this.pos;
 				while(p < queue.length) {
 					let cur = queue[p];
-					if(this.map.get(cur.x, cur.y).owner == this.id && this.map.get(cur.x, cur.y).active) {
+					if(this.isGood(cur)) {
 						answ = cur;
 						break;
 					}
@@ -1390,7 +1396,7 @@ class GameMap {
 			var net = rooms[this.room].network[id];
 			if(net.side && block.id == 12) block.koef = 10;
 			io.to('room' + this.room).emit('blockBreaking', block.physics.rpos, block.koef);
-			this.updateBlock(i, j, id);
+			this.updateBlock(i, j, {gameId: net.gameId, side: net.side});
 			return true;
 		}
 		return false;
@@ -1400,14 +1406,14 @@ class GameMap {
 		var block = this.get(i, j);
 		var stoneCost = block.stoneCost;
 		var pl;
-		if(source.side == 0) pl = rooms[source.room].players[source.gameId];
-		else pl = rooms[source.room].viruses[source.gameId];
+		if(source.side == 0) pl = rooms[this.room].players[source.gameId];
+		else pl = rooms[this.room].viruses[source.gameId];
 		if(pl) {
 			pl.workers++;
 			pl.stone += stoneCost;
 		}
 		if(this.checkCoords(i, j - 1) && this.get(i, j - 1).needBlock) {
-			this.breakBlock(i, j - 1, source.roomId);
+			this.breakBlock(i, j - 1, source);
 			if(pl) {
 				pl.workers--;
 			}
@@ -1441,8 +1447,7 @@ class GameMap {
 				nq.push(item);
 			}
 			if(res.changed) {
-				var net = rooms[this.room].network[item.info];
-				this.onBreaking(i, j, net);
+				this.onBreaking(i, j, item.info);
 			}
 			if(!res.update || res.changed) {
 				self.emitBlock(i, j);
@@ -1523,6 +1528,7 @@ class Room {
 			item.ready = net.ready;
 			data.push(item);
 		});
+		emitRooms();
 		io.to('room' + this.id).emit('updateRoom', data, this.id);
 	}
 
@@ -1541,7 +1547,7 @@ class Room {
 		var data = [];
 		var self = this;
 		this.players.forEach(function (player, i, arr) {
-			self.online += !player.network.left;
+			self.online += !player.network.left && player.alive;
 			//Processing physics
 			player.tickUpdate(dt);
 
@@ -1567,7 +1573,7 @@ class Room {
 			}
 		});
 		this.viruses.forEach(function (virus, i, arr) {
-			self.online += !virus.network.left;
+			self.online += !virus.network.left && virus.alive;
 			//Processing physics
 			virus.tickUpdate(dt);
 
