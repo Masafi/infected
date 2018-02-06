@@ -1566,7 +1566,7 @@ class Room {
 				player.network.roomId = -1;
 				player.network.ready = false;
 				player.network.socket.emit('gameOver');
-				player.network.socket.leave('room' + this.id);
+				player.network.socket.leave('room' + self.id);
 				player.network.socket.join('lobby');
 			}
 			else {
@@ -1591,7 +1591,7 @@ class Room {
 				virus.network.roomId = -1;
 				virus.network.ready = false;
 				virus.network.socket.emit('gameOver');
-				virus.network.socket.leave('room' + this.id);
+				virus.network.socket.leave('room' + self.id);
 				virus.network.socket.join('lobby');
 			}
 			else {
