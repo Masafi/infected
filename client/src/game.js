@@ -679,6 +679,9 @@ function frame() {
 				});
 				players.get(roomId).nameSprite.updatePos(camera);
 			}
+			else {
+				console.log("Could't find myself");
+			}
 		}
 		else {
 			camera = virus.pos.sub(new Vector2(window.innerWidth / gScale / 2, window.innerHeight / gScale / 2));

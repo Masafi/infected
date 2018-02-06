@@ -253,3 +253,82 @@
 22:55:06 [INFO:175]: asd (0) joined the game. Total: 1
 22:55:08 [INFO:1516]: Room 0 started
 22:55:09 [WARN:1675]: Server overload: skipping 8 ticks
+10:42:46 [INFO:1628]: Tue Feb 06 2018 10:42:46 GMT+0300 (RTZ 2 (зима))
+10:42:46 [INFO:1629]: Server version: 0.1.1
+10:42:46 [INFO:1630]: Server started successfully
+10:42:46 [WARN:1675]: Server overload: skipping 127 ticks
+10:42:47 [WARN:1675]: Server overload: skipping 12 ticks
+10:42:49 [INFO:175]: Masafi (0) joined the game. Total: 1
+10:42:52 [INFO:1516]: Room 1 started
+10:42:52 [WARN:1675]: Server overload: skipping 14 ticks
+10:42:53 [WARN:1675]: Server overload: skipping 5 ticks
+10:42:53 [WARN:1675]: Server overload: skipping 9 ticks
+10:43:00 [INFO:375]: Masafi left the game. Total: 1
+10:43:00 [INFO:1492]: Room 1 stoped
+10:43:00 [WARN:1675]: Server overload: skipping 16 ticks
+10:43:01 [INFO:134]: Masafi rejoined the game. Total: 1
+10:43:04 [INFO:1516]: Room 1 started
+10:43:04 [WARN:1675]: Server overload: skipping 14 ticks
+10:43:05 [WARN:1675]: Server overload: skipping 8 ticks
+10:43:19 [INFO:375]: Masafi left the game. Total: 1
+10:43:19 [INFO:1492]: Room 1 stoped
+10:43:19 [WARN:1675]: Server overload: skipping 16 ticks
+10:44:56 [WARN:1675]: Server overload: skipping 5 ticks
+11:21:27 [INFO:1632]: Tue Feb 06 2018 11:21:27 GMT+0300 (RTZ 2 (зима))
+11:21:27 [INFO:1633]: Server version: 0.1.1
+11:21:27 [INFO:1634]: Server started successfully
+11:21:27 [WARN:1679]: Server overload: skipping 79 ticks
+11:22:03 [WARN:1679]: Server overload: skipping 10 ticks
+11:22:08 [WARN:1679]: Server overload: skipping 5 ticks
+11:25:23 [INFO:175]: фыв (0) joined the game. Total: 1
+11:25:25 [INFO:1516]: Room 1 started
+11:25:25 [WARN:1679]: Server overload: skipping 14 ticks
+11:25:27 [WARN:1679]: Server overload: skipping 6 ticks
+11:28:13 [WARN:1679]: Server overload: skipping 5 ticks
+11:28:13 [WARN:1679]: Server overload: skipping 5 ticks
+11:35:09 [INFO:375]: фыв left the game. Total: 1
+11:35:09 [INFO:1492]: Room 1 stoped
+11:35:10 [WARN:1679]: Server overload: skipping 16 ticks
+11:51:27 [INFO:1688]: Started cleaning up
+11:51:27 [INFO:1700]: Ended cleaning up
+11:52:13 [WARN:1679]: Server overload: skipping 5 ticks
+11:52:20 [WARN:1679]: Server overload: skipping 5 ticks
+11:52:20 [WARN:1679]: Server overload: skipping 7 ticks
+11:59:07 [WARN:1679]: Server overload: skipping 5 ticks
+11:59:07 [WARN:1679]: Server overload: skipping 5 ticks
+11:59:07 [WARN:1679]: Server overload: skipping 5 ticks
+12:01:57 [WARN:1679]: Server overload: skipping 6 ticks
+12:20:21 [INFO:1634]: Tue Feb 06 2018 12:20:21 GMT+0300 (RTZ 2 (зима))
+12:20:21 [INFO:1635]: Server version: 0.1.1
+12:20:21 [INFO:1636]: Server started successfully
+12:20:21 [WARN:1681]: Server overload: skipping 95 ticks
+12:20:31 [INFO:175]: asd (0) joined the game. Total: 1
+12:20:36 [INFO:1518]: Room 1 started
+12:20:36 [WARN:1681]: Server overload: skipping 13 ticks
+12:20:37 [WARN:1681]: Server overload: skipping 5 ticks
+12:21:30 [INFO:1636]: Tue Feb 06 2018 12:21:30 GMT+0300 (RTZ 2 (зима))
+12:21:30 [INFO:1637]: Server version: 0.1.1
+12:21:30 [INFO:1638]: Server started successfully
+12:21:30 [WARN:1683]: Server overload: skipping 131 ticks
+12:21:32 [INFO:175]: Masa (0) joined the game. Total: 1
+12:21:34 [INFO:1520]: Room 1 started
+12:21:34 [WARN:1683]: Server overload: skipping 13 ticks
+12:21:58 [INFO:1634]: Tue Feb 06 2018 12:21:58 GMT+0300 (RTZ 2 (зима))
+12:21:58 [INFO:1635]: Server version: 0.1.1
+12:21:58 [INFO:1636]: Server started successfully
+12:21:58 [WARN:1681]: Server overload: skipping 135 ticks
+12:22:00 [INFO:175]: mas (0) joined the game. Total: 1
+12:22:03 [INFO:1518]: Room 1 started
+12:22:03 [WARN:1681]: Server overload: skipping 10 ticks
+12:22:04 [WARN:1681]: Server overload: skipping 6 ticks
+12:43:54 [INFO:1632]: Tue Feb 06 2018 12:43:54 GMT+0300 (RTZ 2 (зима))
+12:43:54 [INFO:1633]: Server version: 0.1.1
+12:43:54 [INFO:1634]: Server started successfully
+12:43:54 [WARN:1679]: Server overload: skipping 133 ticks
+12:43:59 [INFO:175]: Masafi (0) joined the game. Total: 1
+12:44:02 [INFO:1516]: Room 1 started
+12:44:02 [WARN:1679]: Server overload: skipping 13 ticks
+12:44:03 [WARN:1679]: Server overload: skipping 6 ticks
+12:44:08 [INFO:375]: Masafi left the game. Total: 1
+12:44:08 [INFO:1492]: Room 1 stoped
+12:44:08 [WARN:1679]: Server overload: skipping 13 ticks

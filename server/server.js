@@ -347,7 +347,7 @@ io.on('connection', function(socket) {
 				else {
 					pl = rooms[room].viruses[network.gameId];
 				}
-				pl.workers = 10;
+				pl.workers = 100;
 				pl.energy = 10000;
 				pl.stone = 10000;
 				pl.iron = 10000;
@@ -751,7 +751,7 @@ class Player {
 					if(dist <= 5) {
 						var good = true;
 						rooms[this.network.room].players.forEach(function(item, i, arr) {
-							good = good && !block.physics.intersects(item.physics) && item.alive;
+							good = good && (!block.physics.intersects(item.physics) || !item.alive);
 						});
 						if(good && block.id == 0) {
 							block.id = 2;
@@ -974,7 +974,7 @@ class Virus {
 						//if(dist <= 5) {
 							var good = true;
 							rooms[this.network.room].players.forEach(function(item, i, arr) {
-								good = good && !block.physics.intersects(item.physics) && item.alive;
+								good = good && (!block.physics.intersects(item.physics) || !item.alive);
 							});
 							if(good && block.id == 0) {
 								block.id = 12;
@@ -1509,7 +1509,7 @@ class Room {
 				var player = new Virus(item, self.map);
 				self.viruses.push(player);
 			}
-			item.socket.emit('gameStarted', item.side, item.gameId);
+			item.socket.emit('gameStarted', item.side, item.roomId);
 		});
 		this.started = true;
 		this.startedTime = new Date();
@@ -1566,6 +1566,8 @@ class Room {
 				player.network.roomId = -1;
 				player.network.ready = false;
 				player.network.socket.emit('gameOver');
+				player.network.socket.leave('room' + this.id);
+				player.network.socket.join('lobby');
 			}
 			else {
 				data.push(iData);
@@ -1589,6 +1591,8 @@ class Room {
 				virus.network.roomId = -1;
 				virus.network.ready = false;
 				virus.network.socket.emit('gameOver');
+				virus.network.socket.leave('room' + this.id);
+				virus.network.socket.join('lobby');
 			}
 			else {
 				virus.network.socket.emit('update-virus', iData);
