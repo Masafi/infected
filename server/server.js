@@ -115,8 +115,10 @@ function emitRooms() {
 
 ///Sockets behavior
 io.on('connection', function(socket) {
+	//When new user connected, we want him to send us his token, if it's good, then it's means, that player reconnected
 	socket.emit('requestToken');
 
+	//Checks that player reconnected, not new 
 	socket.on('returnToken', function (token) {
 		var good = verifyToken(token);
 		if(good) {
@@ -148,6 +150,7 @@ io.on('connection', function(socket) {
 		}
 	});
 
+	//Register handler
 	socket.on('registration', function (name, side) {
 		if(usersNetwork({'socket': socket.id.toString()}).count() > 0) {
 			return;
@@ -186,6 +189,7 @@ io.on('connection', function(socket) {
 		}
 	});
 
+	//User wants to join room handler
 	socket.on('joinRoom', function(token, room) {
 		if(verifyToken(token)) {
 			var network = usersNetwork({'token': token}).first().network;
@@ -207,6 +211,7 @@ io.on('connection', function(socket) {
 		}
 	});
 
+	//User wants to leave rooms handler
 	socket.on('leaveRoom', function (token) {
 		if(verifyToken(token)) {
 			var network = usersNetwork({'token': token}).first().network;
@@ -228,6 +233,7 @@ io.on('connection', function(socket) {
 		}
 	});
 
+	//User wants to join (switch) side handler
 	socket.on('joinSide', function(token, team) {
 		if(verifyToken(token)) {
 			var network = usersNetwork({'token': token}).first().network;
@@ -248,6 +254,7 @@ io.on('connection', function(socket) {
 		}
 	});
 
+	//User pressed ready button handler
 	socket.on('ready', function(token, val) {
 		if(verifyToken(token)) {
 			var network = usersNetwork({'token': token}).first().network;
@@ -262,6 +269,7 @@ io.on('connection', function(socket) {
 		}
 	});
 
+	//User want to get (i, j) chunk, sends it back only if user can see it
 	socket.on('requestChunk', function(i, j, token) {
 		if(verifyToken(token)) {
 			var network = usersNetwork({'token': token}).first().network;
@@ -291,6 +299,7 @@ io.on('connection', function(socket) {
 		}
 	});
 
+	//User wants to get all rooms
 	socket.on('requestRooms', function(token) {
 		if(verifyToken(token)) {
 			var data = [];
@@ -308,6 +317,7 @@ io.on('connection', function(socket) {
 		}
 	});
 
+	//User keyboard (in-game) handler
 	socket.on('keyboard', function (key, state, token) {
 		if(verifyToken(token)) {
 			var network = usersNetwork({'token': token}).first().network;
@@ -322,6 +332,7 @@ io.on('connection', function(socket) {
 		}
 	});
 
+	//User mouse (in-game) handler
 	socket.on('mouse', function (pos, button, state, token) {
 		if(verifyToken(token)) {
 			var network = usersNetwork({'token': token}).first().network;
@@ -345,6 +356,7 @@ io.on('connection', function(socket) {
 		}
 	});
 
+	//Some cheats for debug
 	socket.on('cheats', function(token, pass) {
 		if(verifyToken(token) && pass == "truepassword") {
 			var network = usersNetwork({'token': token}).first().network;
@@ -365,6 +377,7 @@ io.on('connection', function(socket) {
 		}
 	});
 
+	//User disconnect handler
 	socket.on('disconnect', function() {
 		if(usersNetwork({'socket': socket.id.toString()}).count() > 0) {
 			var usr = usersNetwork({'socket': socket.id.toString()}).first();
@@ -392,6 +405,7 @@ const eps = 1e-6;
 const chunkSize = 8;
 const maxHeight = 15;
 
+//Basic utility physics 2d vector class
 class Vector2 {
 	constructor(x, y) {
 		this.x = x || 0;
@@ -455,6 +469,7 @@ var mapSize = new Vector2(512, 128);
 var CellSize = new Vector2(16, 16);
 var screenSize = new Vector2(1536, 734).diva(1.7);
 
+//Basic class, responsible for almost every client-server in-game connection
 class NetworkPrimitive {
 	constructor() {
 		this.name = "";
@@ -471,6 +486,7 @@ class NetworkPrimitive {
 		this.leftTime = Date.now();
 	}
 
+	//Creates token
 	makeToken() {
 		var profile = {};
 		profile.nick = this.name;
@@ -481,6 +497,7 @@ class NetworkPrimitive {
 	}
 }
 
+//Physics object
 class PhysicPrimitive {
 	constructor() {
 		this._pos = new Vector2(0, 0);
@@ -503,12 +520,15 @@ class PhysicPrimitive {
 		return this.pos.add(vel.mula(dt));
 	}
 
+	//Friction force
 	brakes(dt) {
 		this.frameVel = this.vel.copy();
 		if(Math.abs(this.vel.x) <= this.slowDown.x * dt * 60) this.vel.x = 0;
 		else this.vel.x -= Math.sign(this.vel.x) * this.slowDown.x * dt * 60;
 	}
 
+	//Checks collision between two AABB with speed
+	//Returns time of collision and normal to side of collision surface
 	collision(that, dt) {
 		var relv = this.vel.sub(that.vel);
 		var bigBox = new PhysicPrimitive();
@@ -581,6 +601,7 @@ class PhysicPrimitive {
 		}
 	}
 
+	//Check if it's intersect another AABB
 	intersects(that) {
 		return   !(that.pos.x > this.pos.x + this.size.x
 				|| that.pos.x + that.size.x < this.pos.x
@@ -588,6 +609,7 @@ class PhysicPrimitive {
 				|| that.pos.y + that.size.y < this.pos.y);
 	}
 
+	//If object is in another object, tries to move it from it
 	resolveIntersection(that) {
 		if(this.intersects(that)) {
 			var leastProj = new Vector2(this.pos.x + this.size.x - that.pos.x, this.pos.y + this.size.y - that.pos.y);
@@ -616,6 +638,7 @@ class PhysicPrimitive {
 		}
 	}
 
+	//Finds first object, with which we will collide
 	resolveObjects(objects, collisionDataFirst) {
 		var ids = [];
 		var self = this;
@@ -645,6 +668,7 @@ class PhysicPrimitive {
 		return collisionDataEnd;
 	}
 
+	//Updates object by data given
 	updateByCollisionData(data, objects, used, self) {
 		var projVec = new Vector2(data.proj.y, data.proj.x);
 		this.standing = this.standing || data.proj.y == -1;
@@ -659,6 +683,8 @@ class PhysicPrimitive {
 		});
 	}
 
+	//Main collision function
+	//Resolves every collision of this object and 'objects'
 	resolveCollision(objects, dt, self) {
 		this.standing = false;
 
@@ -695,6 +721,8 @@ class PhysicPrimitive {
 	}
 }
 
+//Player (side) main class
+//Responsible for handling player behavior
 class Player {
 	constructor(network, map) {
 		this.keys = {};
@@ -723,6 +751,7 @@ class Player {
 		this.lastDamageTime = 0;
 	}
 
+	//Keyboard and mouse handling
 	processKeys(dt) {
 		var coef = 1;
 		if(this.lastDamageTime < 1) coef = 0.3;
@@ -776,6 +805,7 @@ class Player {
 		}
 	}
 
+	//Block collision handler
 	onCollision(block) {
 		if(block.damage && this.lastDamageTime >= 1) {
 			this.physics.vel.y = -300;
@@ -784,6 +814,7 @@ class Player {
 		}
 	}
 
+	//Updates all player states
 	tickUpdate(dt) {
 		//Pre update
 		this.processKeys(dt);
@@ -830,6 +861,8 @@ class Player {
 	}
 }
 
+//Virus main class
+//Responsible for handling virus behavior
 class Virus {
 	constructor(network, map) {
 		this.keys = {};
@@ -856,6 +889,7 @@ class Virus {
 		this.map.emitBlock(rpos.x, rpos.y);
 	}
 
+	//Checks if (mid) coords good to place camera to
 	isGood(mid) {
 		for (let i = -4; i <= 4; i++) {
 			for (let j = -4; j <= 4; j++) {
@@ -867,6 +901,8 @@ class Virus {
 		return false;
 	}
 
+	//Returns nearest to vpos good position
+	//Intermidiate
 	checkPos(vpos) {
 		var npos = vpos.max(screenSize.div(2)).min(mapSize.mul(CellSize).sub(screenSize.div(2)));
 		var mid = npos.div(CellSize).round();
@@ -896,6 +932,7 @@ class Virus {
 		}
 	}
 
+	//Places camera to nearest to npos good position
 	processPos(npos) {
 		var tpos = this.checkPos(npos);
 		if(tpos.x < 0) {
@@ -936,6 +973,7 @@ class Virus {
 		}
 	}
 
+	//Keyboard and mouse handler
 	processKeys(dt) {
 		var npos = this.pos.copy();
 		if (this.keys['a']) {
@@ -1001,6 +1039,7 @@ class Virus {
 		}
 	}
 
+	//Updates all virus states
 	tickUpdate(dt) {
 		this.processKeys(dt);
 
@@ -1010,6 +1049,8 @@ class Virus {
 	}
 }
 
+//Block class
+//Defines block, it's properties and behavior
 class Block {
 	constructor(map) {
 		this.map = map;
@@ -1035,6 +1076,8 @@ class Block {
 		this.active = 1;
 	}
 
+	//Updates block
+	//Mainly breaking
 	update(dt) {
 		var result = {};
 		result.update = false;
@@ -1050,6 +1093,7 @@ class Block {
 		return result;
 	}
 
+	//Generates data to send to client about this block
 	generateData() {
 		var obj = {};
 		obj.pos = this.physics.pos;
@@ -1067,6 +1111,7 @@ class Block {
 		return obj;
 	}
 
+	//If block has multitexture, updates it
 	updateMultiTexture() {
 		if(this.multiTexture) {
 			var type = 8;
@@ -1097,6 +1142,7 @@ class Block {
 		}
 	}
 
+	//Updates texture of block depending of it's id
 	updateBlockTexture() {
 		let cur = new Vector2(this.physics.rpos.x, this.physics.rpos.y);
 		let shift = [new Vector2(0, 0), new Vector2(-1, 0), new Vector2(1, 0), new Vector2(0, -1), new Vector2(0, 1)];
@@ -1132,6 +1178,8 @@ class Block {
 	}
 }
 
+//Chunk class
+//Mainly just a container with utility functions
 class Chunk {
 	constructor(rpos, map) {
 		this.physics = new PhysicPrimitive();
@@ -1149,6 +1197,7 @@ class Chunk {
 		}
 	}
 
+	//Pushes to arr every solid object in chunk
 	getStaticObj(arr) {
 		this.chunk.forEach(function(row, i, carr) {
 			row.forEach(function(block, j, rarr) {
@@ -1159,6 +1208,7 @@ class Chunk {
 		});
 	}
 
+	//Updates all block multitextures
 	updateMultiTexture() {
 		this.chunk.forEach(function(row, i, arr) {
 			row.forEach(function(item, j, rarr) {
@@ -1167,6 +1217,7 @@ class Chunk {
 		});
 	}
 
+	//Generates data to send to client
 	generateData() {
 		var data = [];
 		this.chunk.forEach(function(row, i, arr) {
@@ -1186,6 +1237,8 @@ class Chunk {
 	}
 }
 
+//Perlin noise generator
+//Math, math, math...
 var perlinNoise = new function() {
 	this.noise = function(x, y, z) {
 		var p = new Array(512);
@@ -1246,6 +1299,8 @@ var perlinNoise = new function() {
 	function scale(n) { return (1 + n) / 2; }
 }
 
+//Class to store game map
+//Also it's a main interface to work with map, blocks, etc
 class GameMap {
 	constructor(room) {
 		this.room = room;
@@ -1259,6 +1314,7 @@ class GameMap {
 		}
 	}
 
+	//Erasing map
 	recreate() {
 		this.updateQueue.length = 0;
 		for(let i = 0; i < mapSize.x / chunkSize; i++) {
@@ -1269,6 +1325,7 @@ class GameMap {
 		}
 	}
 
+	//Generates map
 	generateMap() {
 		var height = [];
 		var seed = Math.random() * 10;
@@ -1366,6 +1423,7 @@ class GameMap {
 		this.getChunk().set(i, j, val);	
 	}
 
+	//Sends chunk to socket/all players
 	emitChunk(i, j, socket = undefined) {
 		if(socket == undefined) {
 			io.to('room' + this.room).emit('map-chunk', {chunk: this.map[i][j].generateData(), pos: this.map[i][j].physics._pos});
@@ -1375,6 +1433,7 @@ class GameMap {
 		}
 	}
 
+	//Sends block to socket/all players
 	emitBlock(i, j, socket = undefined) {
 		if(socket == undefined) {
 			io.to('room' + this.room).emit('blockUpdate', this.get(i, j).generateData());
@@ -1384,6 +1443,8 @@ class GameMap {
 		}
 	}
 
+	//Sends map to socket/all players
+	//Currently not used
 	emitMap(socket = undefined) {
 		var self = this;
 		this.map.forEach(function(row, i, arr) {
@@ -1397,6 +1458,7 @@ class GameMap {
 		this.updateQueue.push({rpos: new Vector2(i, j), info: info});
 	}
 
+	//Interface to break a block
 	breakBlock(i, j, info) {
 		var block = this.get(i, j);
 		if(block.breakable && !block.isBreaking){
@@ -1411,6 +1473,7 @@ class GameMap {
 		return false;
 	}
 
+	//When block breaks handler
 	onBreaking(i, j, source) {
 		var block = this.get(i, j);
 		var stoneCost = block.stoneCost;
@@ -1443,6 +1506,7 @@ class GameMap {
 		block.id = 0;
 	}
 
+	//Updates all map
 	update(dt) {
 		var nq = [];
 		var self = this;
@@ -1466,6 +1530,9 @@ class GameMap {
 	}
 }
 
+//Room class
+//Ideally, must be as less as much connected to anything else
+//Proccess every game session
 class Room {
 	constructor(id) {
 		this.id = id;
@@ -1476,6 +1543,7 @@ class Room {
 		this.restart();
 	}
 
+	//Restarts room
 	restart() {
 		var first = this.map == undefined;
 		if(!first) {
@@ -1503,6 +1571,7 @@ class Room {
 		emitRooms();
 	}
 
+	//Starts game
 	start() {
 		var self = this;
 		if(this.id > 0) {
@@ -1527,6 +1596,7 @@ class Room {
 		emitRooms();
 	}
 
+	//Emits it's current state
 	emitRoom() {
 		var data = [];
 		this.network.forEach(function(net, i, arr) {
@@ -1541,6 +1611,7 @@ class Room {
 		io.to('room' + this.id).emit('updateRoom', data, this.id);
 	}
 
+	//Update function if game is not started
 	updatePreGame(dt) {
 		var allReady = true;
 		this.network.forEach(function(net, i, arr) {
@@ -1551,6 +1622,7 @@ class Room {
 		}
 	}
 
+	//Update function if game is started
 	updateGame(dt) {
 		this.online = 0;
 		var data = [];
@@ -1623,6 +1695,7 @@ class Room {
 		io.to('room' + this.id).emit('update', data);
 	}
 
+	//Update
 	tick(dt) {
 		if(!this.started) {
 			this.updatePreGame(dt);
@@ -1632,7 +1705,8 @@ class Room {
 		}
 	}
 }
-
+	
+//Server start
 function setup() {
 	for(let i = 0; i < 3; i++) {
 		rooms.push(new Room(i));
@@ -1644,6 +1718,7 @@ function setup() {
 	log("Server started successfully");
 }
 
+//Before server starts, load all files
 function loadFiles() {
 	fs.readFile(path + 'server/res/blockInfo.csv', 'utf8', function(err, data) {
 		if(err) {
@@ -1680,6 +1755,7 @@ loadFiles();
 
 var rooms = [];
 
+//Server tick
 function tick() {
 	var curTime = new Date().getTime();
 	var dt = (curTime - lastTickTime) / 1000;
@@ -1694,6 +1770,7 @@ function tick() {
 	});
 }
 
+//Erases every 30 minutes all non active (disconnected) players
 function updatePlayers() {
 	log("Started cleaning up");
 	var res = usersNetwork().map(function(record, id) {

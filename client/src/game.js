@@ -1,15 +1,23 @@
+//File names
 const textureCSV = 'assets/texture.csv';
 const atlasSprite = 'assets/atlas.json';
 const playerSprite = 'assets/player.json';
 const backgroundImage = 'assets/background.png';
-const keycodes = [[87, 'w'], [65, 'a'], [83, 's'], [68, 'd'], [32, ' '], [49, '1'], [50, '2'], [51, '3'], [52, '4']];	
+
+//Map of keys and they keycodes
+const keycodes = [[87, 'w'], [65, 'a'], [83, 's'], [68, 'd'], [32, ' '], [49, '1'], [50, '2'], [51, '3'], [52, '4']];
+
+//Global scale
 var gScale = 1.7;
+
+//Player animation states
 var playerAnim = [['player_run', 1, false], 
 				['player_run', 4, true], 
 				['player_jump_up', 2, false], 
 				['player_jump_down', 2, false], 
 				['player_hit', 3, false]];
 
+//Pixi initialization
 PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST;
 PIXI.loader
 	.add(atlasSprite)
@@ -17,6 +25,7 @@ PIXI.loader
 	.add(backgroundImage)
 	.load(setup);
 
+//Basic utility physics 2d vector class
 class Vector2 {
 	constructor(x, y) {
 		this.x = x || 0;
@@ -76,6 +85,7 @@ class Vector2 {
 	}
 }
 
+//Vars
 var renderer;
 var screenStage;
 var objects;
@@ -118,6 +128,8 @@ var fpstime = 0;
 var virus = undefined;
 var currentState = 0;
 
+//Basic graphis primitive
+//Mostly utility functions
 class GraphicsPrimitive {
 	constructor() {
 		this.pos = new Vector2(0, 0);
@@ -150,6 +162,7 @@ class GraphicsPrimitive {
 	}
 }
 
+//Physics object
 class PhysicPrimitive {
 	constructor() {
 		this._pos = new Vector2(0, 0);
@@ -182,6 +195,8 @@ class PhysicPrimitive {
 	}
 }
 
+//Player class
+//Must be as close as much to server, but for now only container with utility functions
 class Player {
 	constructor(name) {
 		this.physics = new PhysicPrimitive();
@@ -225,6 +240,7 @@ class Player {
 		this.graphics[this.currentAnim].sprite.play();
 	}
 
+	//Updates everything to data, and/or updates everything else (animation, etc)
 	update(data = undefined, dt) {
 		if(data) {
 			this.updated = true;
@@ -311,6 +327,7 @@ class Player {
 	}
 }
 
+//Mostly container with utility functions
 class Block {
 	constructor(scene) {
 		this.physics = new PhysicPrimitive();
@@ -334,6 +351,7 @@ class Block {
 		this.active = 1;
 	}
 
+	//Updates everything to data
 	update(data = undefined) {
 		if(data) {
 			this.physics.pos.x = data.pos.x;
@@ -356,6 +374,7 @@ class Block {
 		}
 	}
 
+	//Set block to animate breaking
 	breakMe(koef) {
 		if(this.breakTime) {
 			this.breakingAnim = new GraphicsPrimitive();
@@ -370,6 +389,7 @@ class Block {
 		}
 	}
 
+	//Updates sprite based on id
 	updateSprite() {
 		if(!this.multiTexture) {
 			this.graphics.sprite.texture = PIXI.Texture.fromFrame('sprite_' + (this.id < 10 ? '0' : '') + this.id + '.png');
@@ -402,6 +422,7 @@ class Block {
 	}
 }
 
+//Mostly container with utility functions
 class Chunk {
 	constructor(rpos) {
 		this.physics = new PhysicPrimitive();
@@ -424,6 +445,7 @@ class Chunk {
 		this.delivered = false;
 	}
 
+	//Updates everything to data
 	update(data) {
 		var self = this;
 		var curUpdate = this.updateRender();
@@ -443,6 +465,7 @@ class Chunk {
 		}
 	}
 
+	//Checks, if this chunk must be rendered or not
 	updateRender() {
 		var pos = camera.copy();
 		pos = new Vector2(pos.x + window.innerWidth / gScale / 2, pos.y + window.innerHeight / gScale / 2).div(CellSize);
@@ -474,6 +497,7 @@ class Chunk {
 	}
 }
 
+//Mostly container with utility functions
 class GameMap {
 	constructor() {
 		this.map = [];
@@ -486,6 +510,7 @@ class GameMap {
 		this.updateQueue = [];
 	}
 
+	//Clears map
 	recreate() {
 		this.map.length = 0;
 		for(let i = 0; i < mapSize.x / chunkSize; i++) {
@@ -538,6 +563,7 @@ class GameMap {
 	}
 }
 
+//Container
 class Virus {
 	constructor() {
 		this.pos = new Vector2(0, 0);
@@ -557,8 +583,11 @@ class Virus {
 	}
 }
 
+//Game map
 var map = undefined;
 
+//Setups everything
+//Mostly rendering
 function setup() {
 	gameCanvas = document.getElementById('game');
 	renderer = PIXI.autoDetectRenderer(500, 500, {view: gameCanvas, resolution: 1});
@@ -630,6 +659,7 @@ function setup() {
 	frame();
 }
 
+//Parces animation
 function loadAnimation() {
 	var getTextureName = function(pref, id) {
 		return pref + "_" + (id >= 10 ? '' : '0') + id + ".png";
@@ -644,6 +674,7 @@ function loadAnimation() {
 	});
 }
 
+//Tick or frame function
 function frame() {
 	requestAnimationFrame(frame);
 	var curTime = new Date().getTime();
@@ -739,6 +770,7 @@ function frame() {
 	renderer.render(screenStage);
 }
 
+//Starts the game
 function enableGame() {
 	if(isGameActive && isGameLoaded) {
 		isGameStarted = true;
@@ -750,6 +782,7 @@ function enableGame() {
 	}
 }
 
+//Keyboard handler
 function keyboard(keyCode, ch, local) {
 	var key = {};
 	key.code = keyCode;
@@ -795,6 +828,7 @@ function keyboard(keyCode, ch, local) {
 	return key;
 }
 
+//Mouse handler
 function mouseDown(event, canvas) {
 	if(isGameActive) {
 		var pos = new Vector2();
@@ -804,6 +838,7 @@ function mouseDown(event, canvas) {
 	}
 }
 
+//Mouse handler
 function mouseMoved(event, canvas) {
 	if(isGameActive && isGameLoaded) {
 		var pos = new Vector2();

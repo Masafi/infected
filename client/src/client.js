@@ -1,3 +1,4 @@
+//Vars
 var socket = io.connect(window.location.href, { secure: true });
 var token = undefined;
 var chunksGot = 0;
@@ -7,6 +8,7 @@ var roomId = 0;
 var isReady = false;
 var tps = 0;
 
+//Setup
 function setup() {
 	token = Cookies.get('token');
 	socket.emit('requestRooms');
@@ -14,12 +16,14 @@ function setup() {
 
 setup();
 
+//Error with registration and/or token handler
 socket.on('reg-error', function(errText) {
 	//$('#login-error').html('<b>Error:</b> ' + errText);
 	//$('#login-error').show();
 	deactivateGame(true);
 });
 
+//Success registration handler
 socket.on('reg-success', function(key, id, name) {
 	console.log("Successfully registered with name: " + name);
 	token = key;
@@ -32,6 +36,8 @@ socket.on('reg-success', function(key, id, name) {
 	$('#rooms-form').show();
 });
 
+//Player disconnected handler
+//Now not used
 socket.on('reg-disconnected', function(id) {
 	if (players.has(id)) {
 		players.get(id).graphics.forEach(function(item, i, arr) {
@@ -42,6 +48,7 @@ socket.on('reg-disconnected', function(id) {
 	}
 });
 
+//Gets rooms list from server
 socket.on('rooms', function(data) {
 	$('#rooms-list').empty();
 	data.forEach(function(item, i, arr) {
@@ -60,30 +67,36 @@ socket.on('rooms', function(data) {
 	});
 });
 
+//Game update
 socket.on('update', function(data) {
 	tps++;
 	dataUpdated = false;
 	gameData = data;
 });
 
+//If user is a virus updater
 socket.on('update-virus', function(data) {
 	virus.update(data);
 });
 
+//Server sent a chunk
 socket.on('map-chunk', function(chunk) {
 	map.updateChunk(chunk);
 });
 
+//Block breaking event handler
 socket.on('blockBreaking', function(pos, koef) {
 	map.get(pos.x, pos.y).breakMe(koef);
 });
 
+//Sends token to server
 socket.on('requestToken', function() {
 	if (token) {
 		socket.emit('returnToken', token);
 	}
 });
 
+//Updates current room
 socket.on('updateRoom', function(data, id) {
 	if(!isGameStarted) {
 		$('#players-list-humans').empty();
@@ -102,25 +115,30 @@ socket.on('updateRoom', function(data, id) {
 	}
 });
 
+//Game started event handler
 socket.on('gameStarted', function(_side, _roomId) {
 	side = _side;
 	roomId = _roomId;
 	activateGame();
 });
 
+//Block update event handler
 socket.on('blockUpdate', function(data) {
 	map.updateBlockData(data);
 });
 
+//Game over event handler
 socket.on('gameOver', function() {
 	deactivateGame(false);
 });
 
+//Play (register) button event handler
 function play() {
 	nickname = $('#login-input').val();
 	socket.emit('registration', nickname, +team);
 }
 
+//Removes room GUI and shows game GUI
 function activateGame() {
 	$('#rooms-form').hide();
 	$('#login-form').hide();
@@ -130,6 +148,7 @@ function activateGame() {
 	enableGame();
 }
 
+//Clears game stage
 function eraseStage(stage) {
 	if(stage) {
 		for (var i = stage.children.length - 1; i >= 0; i--) {	
@@ -138,6 +157,8 @@ function eraseStage(stage) {
 	}
 }
 
+//Deactivates game
+//Removes game GUI and shows room GUI
 function deactivateGame(force) {
 	if(force) {
 		$('#login-form').show();
@@ -193,7 +214,7 @@ $(document).ready(function() {
 	// Обработчик кнопки авторизации
 	$('#login-button').click(play);
 
-	// Выход с хаты
+	// Выход с комнаты
 	$('#leave-button').click(leave);
 
 	// Кнопка ready
