@@ -34,8 +34,6 @@ var maxPlayers = 100;
 var renderDistance = 30;
 
 //Utility
-
-//Needed for getting current line
 Object.defineProperty(global, '__stack', {
   get: function(){
     var orig = Error.prepareStackTrace;
@@ -48,14 +46,12 @@ Object.defineProperty(global, '__stack', {
   }
 });
 
-//Needed for getting current line
 Object.defineProperty(global, '__line', {
   get: function(){
     return __stack[2].getLineNumber();
   }
 });
 
-//My log function with date, line and output to file too
 function log(string, warn = 0) {
 	var d = new Date();
 	var p = (v) => { return (v < 10 ? '0' : '') + v; }
@@ -70,13 +66,11 @@ function log(string, warn = 0) {
 	logStdout.write(pref + util.format(string) + '\n');
 }
 
-//If error, log it to file
 process.on('uncaughtException', function(err) {
 	log(err, 2);
 	process.exit(1);
 });
 
-//Checks if token valid
 function verifyToken(token) {
 	var good = true;
 	if(token) {
@@ -93,14 +87,12 @@ function verifyToken(token) {
 	return good;
 }
 
-//Returns first free id
 function reqId() {
 	var i = 0;
 	for(; usersNetwork({'globalId': i}).count() > 0; i++);
 	return i;
 }
 
-//Sends to clients info about current rooms
 function emitRooms() {
 	var data = [];
 	rooms.forEach(function(room, i, arr) {
@@ -113,40 +105,9 @@ function emitRooms() {
 	io.to('lobby').emit('rooms', data);
 }
 
-///Sockets behavior
+//Sockets behavior
 io.on('connection', function(socket) {
 	socket.emit('requestToken');
-
-	socket.on('returnToken', function (token) {
-		var good = verifyToken(token);
-		if(good) {
-			socket.join('users');
-			var usr = usersNetwork({'token': token}).first();
-			usr.network.socket = socket;
-			usr.network.left = false;
-			usr.network.makeToken();
-			usr.token = usr.network.token;
-			usr.socket = socket.id.toString();
-			socket.emit('reg-success', usr.token, usr.id, usr.network.name);
-			var room = usr.network.room;
-			if(room >= 0 && room < rooms.length) {
-				socket.join('room' + room);
-				if(rooms[room].started) {
-					socket.emit('gameStarted', usr.network.side, usr.network.gameId);
-				}
-				else {
-					rooms[room].emitRoom();
-				}
-			}
-			else {
-				socket.join('lobby');
-			}
-			log(usr.network.name + " rejoined the game. Total: " + usersNetwork().count());
-		}
-		else {
-			socket.emit('reg-error', "Token extension error");
-		}
-	});
 
 	socket.on('registration', function (name, side) {
 		if(usersNetwork({'socket': socket.id.toString()}).count() > 0) {
@@ -171,7 +132,7 @@ io.on('connection', function(socket) {
 		else {
 			var network = new NetworkPrimitive();
 			network.name = name;
-			network.id = reqId();
+			network.globalId = reqId();
 			network.socket = socket;
 			if(side != 1 && side != 0) {
 				side = 0;
@@ -180,16 +141,48 @@ io.on('connection', function(socket) {
 			network.makeToken();
 			socket.join('users');
 			socket.join('lobby');
-			usersNetwork.insert({'id': network.id, 'socket': socket.id.toString(), 'token': network.token, 'network': network});
-			socket.emit('reg-success', network.token, network.id, name);
-			log(name +  " (" + network.id + ") joined the game. Total: " + usersNetwork().count());
+			usersNetwork.insert({'globalId': network.globalId, 'socket': socket.id.toString(), 'token': network.token, 'network': network});
+			socket.emit('reg-success', network.token, network.globalId, name);
+			log(name +  " (" + network.globalId + ") joined the game. Total: " + usersNetwork().count());
+		}
+	});
+
+	socket.on('returnToken', function (token) {
+		var good = verifyToken(token);
+		if(good) {
+			socket.join('users');
+			var usr = usersNetwork({'token': token}).first();
+			usr.network.socket = socket;
+			usr.network.left = false;
+			usr.network.makeToken();
+			usr.token = usr.network.token;
+			usr.socket = socket.id.toString();
+			socket.emit('reg-success', usr.token, usr.id, usr.network.name);
+			var room = usr.network.room;
+			if(room >= 0 && room < rooms.length) {
+				socket.join('room' + room);
+				if(rooms[room].started) {
+					socket.emit('gameStarted', usr.network.side, usr.network.roomId);
+				}
+				else {
+					log("Reentering not started room", 2);
+					rooms[room].emitRoom();
+				}
+			}
+			else {
+				socket.join('lobby');
+			}
+			log(usr.network.name + " rejoined the game. Total: " + usersNetwork().count());
+		}
+		else {
+			socket.emit('reg-error', "Token extension error");
 		}
 	});
 
 	socket.on('joinRoom', function(token, room) {
 		if(verifyToken(token)) {
 			var network = usersNetwork({'token': token}).first().network;
-			if(room >= 0 && room < rooms.length && network.room == -1 && !rooms[room].started && (rooms[room].cntSides[0] < mxPlayers || rooms[room].cntSides[1] < mxPlayers)) {
+			if(room >= 0 && room < rooms.length && network.room == -1 && !rooms[room].started && (rooms[room].cntSides[0] < maxPlayers || rooms[room].cntSides[1] < maxPlayers)) {
 				var side = (rooms[room].cntSides[0] <= rooms[room].cntSides[1] ? 0 : 1);
 				network.side = side;
 				network.room = room;
@@ -213,10 +206,14 @@ io.on('connection', function(socket) {
 			var room = network.room;
 			if(room >= 0 && room < rooms.length) {
 				rooms[room].network.splice(network.roomId, 1);
+				for(let i = 0; i < rooms[room].network.length; i++) {
+					rooms[room].network[i].roomId = i;
+				}
 				network.room = -1;
 				network.roomId = -1;
 				network.ready = false;
 				rooms[room].cntSides[network.side]--;
+				network.side = 0;
 				socket.leave('room' + room);
 				socket.join('lobby');
 				rooms[room].emitRoom();
@@ -270,10 +267,10 @@ io.on('connection', function(socket) {
 				var pos;
 				var shift = screenSize.diva(2).div(CellSize);
 				if(network.side == 0) {
-					pos = rooms[room].players[network.gameId].physics.rpos;
+					pos = rooms[room].players[network.roomId].physics.rpos;
 				}
 				else {
-					pos = rooms[room].viruses[network.gameId].pos.div(CellSize);
+					pos = rooms[room].players[network.roomId].pos.div(CellSize);
 				}
 				pos = pos.max(shift).min(mapSize.sub(shift));
 				var chunkPos = rooms[room].map.map[i][j].physics.pos;
@@ -293,15 +290,7 @@ io.on('connection', function(socket) {
 
 	socket.on('requestRooms', function(token) {
 		if(verifyToken(token)) {
-			var data = [];
-			rooms.forEach(function(room, i, arr) {
-				var obj = {};
-				obj.id = room.id;
-				obj.players = room.cntSides;
-				obj.started = room.started;
-				data.push(obj);
-			});
-			socket.emit('rooms', data);
+			emitRooms();
 		}
 		else {
 			socket.emit('reg-error', "Token extension error");
@@ -313,8 +302,7 @@ io.on('connection', function(socket) {
 			var network = usersNetwork({'token': token}).first().network;
 			var room = network.room;
 			if(room >= 0 && room < rooms.length && rooms[room].started) {
-				if(network.side == 0) rooms[room].players[network.gameId].keys[key] = state;
-				else rooms[room].viruses[network.gameId].keys[key] = state;
+				rooms[room].players[network.roomId].keys[key] = state;
 			}
 		}
 		else {
@@ -327,13 +315,7 @@ io.on('connection', function(socket) {
 			var network = usersNetwork({'token': token}).first().network;
 			var room = network.room;
 			if(room >= 0 && room < rooms.length && rooms[room].started) {
-				var player = undefined;
-				if(network.side == 0) {
-					player = rooms[room].players[network.gameId];
-				}
-				else {
-					player = rooms[room].viruses[network.gameId];
-				}
+				var player = rooms[room].players[network.roomId];
 				player.mousePos = new Vector2(pos.x, pos.y);
 				player.mouseUpdated = true;
 				player.mouseButton = button;
@@ -350,13 +332,7 @@ io.on('connection', function(socket) {
 			var network = usersNetwork({'token': token}).first().network;
 			var room = network.room;
 			if(room >= 0 && room < rooms.length && rooms[room].started) {
-				var pl;
-				if(network.side == 0) {
-					pl = rooms[room].players[network.gameId];
-				}
-				else {
-					pl = rooms[room].viruses[network.gameId];
-				}
+				var pl = rooms[room].players[network.roomId];
 				pl.workers = 100;
 				pl.energy = 10000;
 				pl.stone = 10000;
@@ -374,9 +350,14 @@ io.on('connection', function(socket) {
 			var room = network.room;
 			if(room >= 0 && room < rooms.length && !rooms[room].started) {
 				rooms[room].network.splice(network.roomId, 1);
+				for(let i = 0; i < rooms[room].network.length; i++) {
+					rooms[room].network[i].roomId = i;
+				}
 				rooms[room].cntSides[network.side]--;
 				network.room = -1;
 				network.roomId = -1;
+				network.ready = false;
+				network.side = 0;
 				socket.leave('room' + room);
 				socket.join('lobby');
 				rooms[room].emitRoom();
@@ -387,11 +368,9 @@ io.on('connection', function(socket) {
 	});
 });
 
-//Game logic
-const eps = 1e-6;
-const chunkSize = 8;
-const maxHeight = 15;
-
+///Game logic
+//Vector2 class
+//Usual physics 2d vector with some operations
 class Vector2 {
 	constructor(x, y) {
 		this.x = x || 0;
@@ -451,6 +430,10 @@ class Vector2 {
 	}
 }
 
+//Consts
+var eps = 1e-6;
+var chunkSize = 8;
+var maxHeight = 15;
 var mapSize = new Vector2(512, 128);
 var CellSize = new Vector2(16, 16);
 var screenSize = new Vector2(1536, 734).diva(1.7);
@@ -458,7 +441,7 @@ var screenSize = new Vector2(1536, 734).diva(1.7);
 class NetworkPrimitive {
 	constructor() {
 		this.name = "";
-		this.id = -1;
+		this.globalId = -1;
 		this.socket = undefined;
 		this.token = undefined;
 		this.left = false;
@@ -467,7 +450,6 @@ class NetworkPrimitive {
 		this.side = 0;
 		this.left = false;
 		this.ready = false;
-		this.gameId = -1;
 		this.leftTime = Date.now();
 	}
 
@@ -475,21 +457,52 @@ class NetworkPrimitive {
 		var profile = {};
 		profile.nick = this.name;
 		profile.sid = this.socket.id.toString();
-		profile.id = this.id;
+		profile.id = this.globalId;
 		this.token = jwt.sign(profile, jwtSecretKey, { expiresIn: "12h" });
 		return this.token;
 	}
 }
 
-class PhysicPrimitive {
+class ObjectPrimitive {
 	constructor() {
 		this._pos = new Vector2(0, 0);
 		this.size = new Vector2(0, 0);
+		this._rpos = new Vector2(0, 0);
+		this.rscale = CellSize.copy();
+	}
+
+	intersects(that) {
+		return   !(that.pos.x > this.pos.x + this.size.x
+				|| that.pos.x + that.size.x < this.pos.x
+				|| that.pos.y > this.pos.y + this.size.y
+				|| that.pos.y + that.size.y < this.pos.y);
+	}
+
+	set pos(npos) {
+		this._pos = npos;
+		this._rpos = npos.div(this.rscale);
+	}
+	
+	set rpos(npos) {
+		this._rpos = npos;
+		this._pos = npos.mul(this.rscale);
+	}
+
+	get pos() {
+		return this._pos;
+	}
+
+	get rpos() {
+		return this._rpos;
+	}
+}
+
+class PhysicPrimitive extends ObjectPrimitive {
+	constructor() {
+		super();
 		this.vel = new Vector2(0, 0);
 		this.acc = new Vector2(0, 0);
-		this._rpos = new Vector2(0, 0);
 		this.frameVel = new Vector2(0, 0);
-		this.rscale = CellSize.add(new Vector2(0, 0));
 		this.standing = false;
 		this.g = 1000;
 		this.slowDown = new Vector2(20, 0);
@@ -510,7 +523,9 @@ class PhysicPrimitive {
 	}
 
 	collision(that, dt) {
-		var relv = this.vel.sub(that.vel);
+		var vel = new Vector2(0, 0);
+		if(that.vel) vel = that.vel;
+		var relv = this.vel.sub(vel);
 		var bigBox = new PhysicPrimitive();
 		bigBox.pos = this.pos.min(this.updatePosition(relv, dt));
 		bigBox.size = this.pos.max(this.updatePosition(relv, dt)).add(this.size).sub(bigBox.pos);
@@ -579,13 +594,6 @@ class PhysicPrimitive {
 			retVal.proj = new Vector2(1, 1);
 			return retVal;
 		}
-	}
-
-	intersects(that) {
-		return   !(that.pos.x > this.pos.x + this.size.x
-				|| that.pos.x + that.size.x < this.pos.x
-				|| that.pos.y > this.pos.y + this.size.y
-				|| that.pos.y + that.size.y < this.pos.y);
 	}
 
 	resolveIntersection(that) {
@@ -675,33 +683,15 @@ class PhysicPrimitive {
 			collisionData.dt = dt - collisionData.dt;
 		}
 	}
-
-	set pos(npos) {
-		this._pos = npos;
-		this._rpos = npos.div(this.rscale);
-	}
-	
-	set rpos(npos) {
-		this._rpos = npos;
-		this._pos = npos.mul(this.rscale);
-	}
-
-	get pos() {
-		return this._pos;
-	}
-
-	get rpos() {
-		return this._rpos;
-	}
 }
 
 class Player {
-	constructor(network, map) {
+	constructor(network, map, ord) {
 		this.keys = {};
-		this.id = network.roomId;
+		this.roomId = network.roomId;
 
 		this.physics = new PhysicPrimitive();
-		this.physics.pos = new Vector2(((network.gameId + 1) * 2000 - 1000) % (mapSize.x * CellSize.x), 0);
+		this.physics.pos = new Vector2(((ord + 1) * 2000 - 1000) % (mapSize.x * CellSize.x), 0);
 		this.physics.size = new Vector2(15, 21);
 		this.physics.acc = new Vector2(0, this.physics.g);
 		this.physics.onCollision = this.onCollision;
@@ -746,27 +736,29 @@ class Player {
 				if(this.map.checkCoords(rpos.x, rpos.y) && this.workers >= 1) {
 					var block = this.map.get(rpos.x, rpos.y);
 					var dist = block.physics.rpos.add(new Vector2(1 / 2, 1 / 2)).sub(this.physics.rpos.add(this.physics.size.diva(CellSize.x * 2))).abs();
-					if(dist <= 5 && this.energy >= block.energyCost) { 
-						if(this.map.breakBlock(rpos.x, rpos.y, {gameId: this.network.gameId, side: this.network.side})) {
+					var energy = Math.min(blockInfo[block.id].peopleHardness, 5);
+					if(dist <= 5 && this.energy >= energy) { 
+						if(this.map.breakBlock(rpos.x, rpos.y, {roomId: this.network.roomId, side: this.network.side})) {
 							this.workers--;
-							if(!block.needBlock) this.energy -= block.energyCost;
+							if(!block.needBlock) this.energy -= energy;
 						}
 					}
 				}
 			}
 			else if(this.mouseButton == 2) {
-				if(this.map.checkCoords(rpos.x, rpos.y) && this.workers >= 1 && this.energy >= 5 && this.stone >= 5) {
+				if(this.map.checkCoords(rpos.x, rpos.y) && this.workers >= 1) {
 					var block = this.map.get(rpos.x, rpos.y);
 					var dist = block.physics.rpos.add(new Vector2(1 / 2, 1 / 2)).sub(this.physics.rpos.add(this.physics.size.diva(CellSize.x * 2))).abs();
-					if(dist <= 5) {
+					if(dist <= 5 && this.energy >= blockInfo[2].peopleHardness && this.stone >= blockInfo[2].stoneHardness && this.iron >= blockInfo[2].ironHardness) {
 						var good = true;
 						rooms[this.network.room].players.forEach(function(item, i, arr) {
 							good = good && (!block.physics.intersects(item.physics) || !item.alive);
 						});
 						if(good && block.id == 0) {
 							block.id = 2;
-							this.energy -= 5;
-							this.stone -= 5;
+							this.energy -= blockInfo[2].peopleHardness;
+							this.stone -= blockInfo[2].stoneHardness;
+							this.iron -= blockInfo[2].ironHardness;
 							this.map.updateBlock(Math.floor(rpos.x), Math.floor(rpos.y));
 						}
 					}
@@ -777,9 +769,9 @@ class Player {
 	}
 
 	onCollision(block) {
-		if(block.damage && this.lastDamageTime >= 1) {
+		if(blockInfo[block.id].damage && this.lastDamageTime >= 1) {
 			this.physics.vel.y = -300;
-			this.hp -= block.damage;
+			this.hp -= blockInfo[block.id].damage;
 			this.lastDamageTime = 0;
 		}
 	}
@@ -831,9 +823,9 @@ class Player {
 }
 
 class Virus {
-	constructor(network, map) {
+	constructor(network, map, ord) {
 		this.keys = {};
-		this.id = network.roomId;
+		this.roomId = network.roomId;
 
 		this.network = network;
 
@@ -847,7 +839,7 @@ class Virus {
 		this.map = map;
 		this.room = 0;
 
-		this.pos = new Vector2(((network.gameId + 1) * 2000 - 1000 + network.gameId) % (mapSize.x * CellSize.x), mapSize.y * CellSize.y / 2 + 10);
+		this.pos = new Vector2(((ord + 1) * 2000 - 1000 + ord) % (mapSize.x * CellSize.x), mapSize.y * CellSize.y / 2 + 10);
 		var rpos = this.pos.div(CellSize).round();
 		this.core = map.get(rpos.x, rpos.y);
 		this.core.id = 13;
@@ -859,7 +851,7 @@ class Virus {
 	isGood(mid) {
 		for (let i = -4; i <= 4; i++) {
 			for (let j = -4; j <= 4; j++) {
-				if(this.map.checkCoords(mid.x + i, mid.y + j) && this.map.get(mid.x + i, mid.y + j).owner == this.id && this.map.get(mid.x + i, mid.y + j).active) {
+				if(this.map.checkCoords(mid.x + i, mid.y + j) && this.map.get(mid.x + i, mid.y + j).side && this.map.get(mid.x + i, mid.y + j).active) {
 					return true;
 				}
 			}
@@ -958,7 +950,7 @@ class Virus {
 			let shift = [new Vector2(0, 0), new Vector2(-1, 0), new Vector2(1, 0), new Vector2(0, -1), new Vector2(0, 1)];
 			for(let i = 0; i < 5; i++) {
 				var t = rpos.add(shift[i]);
-				if(this.map.checkCoords(t.x, t.y) && this.map.get(t.x, t.y).owner == this.id) {
+				if(this.map.checkCoords(t.x, t.y) && this.map.get(t.x, t.y).side && this.map.get(t.x, t.y).owner == this.id) {
 					neighbour = true;
 					break;
 				}
@@ -967,21 +959,21 @@ class Virus {
 				if(this.mouseButton == 0) {
 					if(this.map.checkCoords(rpos.x, rpos.y) && this.workers >= 1) {
 						var block = this.map.get(rpos.x, rpos.y);
-						//var dist = block.physics.rpos.add(new Vector2(1 / 2, 1 / 2)).sub(this.physics.rpos.add(this.physics.size.diva(CellSize.x * 2))).abs();
-						if(this.energy >= block.energyCost || (block.id == 12 && this.energy >= block.energyCost / 10)) { 
-							if(this.map.breakBlock(rpos.x, rpos.y, {gameId: this.network.gameId, side: this.network.side})) {
+						var energy = Math.min(blockInfo[block.id].virusHardness, 5);
+						if(this.energy >= energy) {
+							if(this.map.breakBlock(rpos.x, rpos.y, {roomId: this.network.roomId, side: this.network.side})) {
 								this.workers--;
-								if(block.id == 12) this.energy -= block.energyCost / 10;
-								else if(!block.needBlock) this.energy -= block.energyCost;
+								this.energy -= energy;
+								this.stone -= blockInfo[block.id].organicCost;
+								this.iron -= blockInfo[block.id].poisonCost;
 							}
 						}
 					}
 				}
 				else if(this.mouseButton == 2) {
-					if(this.map.checkCoords(rpos.x, rpos.y) && this.workers >= 1 && this.energy >= 5 && this.stone >= 5) {
+					if(this.map.checkCoords(rpos.x, rpos.y) && this.workers >= 1) {
 						var block = this.map.get(rpos.x, rpos.y);
-						//var dist = block.physics.rpos.add(new Vector2(1 / 2, 1 / 2)).sub(this.physics.rpos.add(this.physics.size.diva(CellSize.x * 2))).abs();
-						//if(dist <= 5) {
+						if(this.energy >= blockInfo[2].virusHardness && this.stone >= blockInfo[2].organicCost && this.iron >= blockInfo[2].poisonCost) {
 							var good = true;
 							rooms[this.network.room].players.forEach(function(item, i, arr) {
 								good = good && (!block.physics.intersects(item.physics) || !item.alive);
@@ -989,11 +981,12 @@ class Virus {
 							if(good && block.id == 0) {
 								block.id = 12;
 								block.owner = this.id;
-								this.energy -= 5;
-								this.stone -= 5;
+								this.energy -= blockInfo[2].virusHardness;
+								this.stone -= blockInfo[2].organicCost;
+								this.iron -= blockInfo[2].poisonCost;
 								this.map.updateBlock(Math.floor(rpos.x), Math.floor(rpos.y));
 							}
-						//}
+						}
 					}
 				}
 			}
@@ -1013,25 +1006,15 @@ class Virus {
 class Block {
 	constructor(map) {
 		this.map = map;
-		this.physics = new PhysicPrimitive();
-		this.physics.size = new Vector2(0, 0).add(CellSize);
+		this.physics = new ObjectPrimitive();
+		this.physics.size = CellSize.copy();
 		this.id = 0;
-		this.solid = false;
-		this.needBlock = false;
-		this.name = '';
-		this.energyCost = 0;
-		this.stoneCost = 0;
-		this.textureOffset = new Vector2(0, 0);
-		this.multiTexture = 0;
 		this.multiTextureId = 8;
-		this.damage = 0;
 		this.owner = -1;
+		this.ownerSide = -1;
+		this.hp = 100;
 
-		this.breakable = false;
-		this.isBreaking = false;
-		this.breakTime = 0;
-		this.koef = 1;
-		this.breakTimer = 0;
+		this.breakStack = [];
 		this.active = 1;
 	}
 
@@ -1039,36 +1022,70 @@ class Block {
 		var result = {};
 		result.update = false;
 		result.changed = false;
-		if(this.isBreaking) {
-			this.breakTimer += dt;
-			if(this.breakTimer >= this.breakTime / this.koef) {
-				this.isBreaking = false;
+		if(this.breakStack.length > 0) {
+			var nstack = [];
+			var coef = 5;
+			for(let i = 0; i < this.breakStack.length; i++) {
+				var df = Math.min(coef * dt, this.breakStack[i].time);
+				var dhp = 0;
+				if(!this.breakStack[i].side) {
+					dhp = df * 100 / Math.max(blockInfo[this.id].peopleHardness, 0.00001);
+				}
+				else {
+					dhp = df * 100 / Math.max(blockInfo[this.id].virusHardness, 0.00001);
+				}
+				this.hp -= dhp;
+				this.breakStack[i].time -= df;
+				if(this.breakStack[i].time > 0) {
+					nstack.push(this.breakStack[i]);
+				}
+				else {
+					var player = undefined;
+					if(this.breakStack[i].side == 0) {
+						player = rooms[this.map.room].players[this.breakStack[i].roomId];
+					}
+					else {
+						player = rooms[this.map.room].viruses[this.breakStack[i].roomId];
+					}
+					player.workers++;
+				}
+			}
+			if(this.hp <= 0) {
 				result.changed = true;
 			}
+			else {
+				this.breakStack = nstack;
+			}
 		}
-		result.update = this.isBreaking;
+		result.update = this.breakStack.length > 0;
 		return result;
 	}
 
+	break(_side, _roomId) {
+		if(blockInfo[this.id].breakable) {
+			this.breakStack.push({time: 5, side: _side, roomId: _roomId});
+		}
+	}
+
 	generateData() {
+		var info = blockInfo[this.id];
 		var obj = {};
-		obj.pos = this.physics.pos;
-		obj.rpos = this.physics.rpos;
+		obj.physics = this.physics;
 		obj.id = this.id;
-		obj.solid = this.solid;
-		obj.breakable = this.breakable;
-		obj.breakTime = this.breakTime;
-		obj.name = this.name;
-		obj.textureOffset = this.textureOffset;
-		obj.multiTexture = this.multiTexture;
+		obj.solid = info.solid;
+		obj.textureOffset = info.textureOffset;
+		obj.multiTexture = info.multiTexture;
 		obj.multiTextureId = this.multiTextureId;
 		obj.owner = this.owner;
+		obj.side = this.ownerSide;
 		obj.active = this.active;
+		obj.hp = this.hp;
 		return obj;
 	}
 
 	updateMultiTexture() {
-		if(this.multiTexture) {
+		var multiTexture = blockInfo[this.id].multiTexture;
+		if(multiTexture) {
 			var type = 8;
 			var self = this;
 			var onlyMe = this.id == 12;
@@ -1079,10 +1096,10 @@ class Block {
 			var y = this.physics.rpos.y;
 			var neigh = check(x, y - 1) * 8 + check(x + 1, y) * 4 + check(x, y + 1) * 2 + check(x - 1, y);
 			var seq = undefined;
-			if(this.multiTexture == 1) {
+			if(multiTexture == 1) {
 				seq = [1, 0, 1, 0, 2, 1, 2, 1, 1, 0, 1, 0, 2, 1, 2, 1];
 			}
-			else if(this.multiTexture == 2) {
+			else if(multiTexture == 2) {
 				seq = [8, 7, 5, 6, 3, 8, 4, 5, 1, 0, 8, 7, 2, 1, 3, 8];
 			}
 			else {
@@ -1114,9 +1131,13 @@ class Block {
 		var info = blockInfo[nid];
 		this.solid = info.solid;
 		this.breakable = info.breakable;
-		this.breakTime = info.breakTime;
-		this.energyCost = info.energyCost;
+		this.peopleHardness = info.peopleHardness;
+		this.virusHardness = info.virusHardness;
 		this.stoneCost = info.stoneCost;
+		this.ironCost = info.ironCost;
+		this.stoneCost = info.stoneCost;
+		this.organicCost = info.organicCost;
+		this.poisonCost = info.poisonCost;
 		this.needBlock = info.needBlock;
 		this.name = info.name;
 		this.textureOffset = info.textureOffset;
@@ -1124,6 +1145,9 @@ class Block {
 		this.multiTextureId = 8;
 		this.damage = info.damage;
 		this.owner = -1;
+		this.side = -1;
+		this.hp = 100;
+		this.breakStack = [];
 		if(updTex) this.updateBlockTexture();
 	}
 
@@ -1134,7 +1158,7 @@ class Block {
 
 class Chunk {
 	constructor(rpos, map) {
-		this.physics = new PhysicPrimitive();
+		this.physics = new ObjectPrimitive();
 		this.physics.rscale = new Vector2(chunkSize, chunkSize);
 		this.physics.rpos = new Vector2(0, 0).add(rpos);
 		this.physics.size = new Vector2(chunkSize, chunkSize);
@@ -1152,7 +1176,7 @@ class Chunk {
 	getStaticObj(arr) {
 		this.chunk.forEach(function(row, i, carr) {
 			row.forEach(function(block, j, rarr) {
-				if(block.solid) {
+				if(blockInfo[block.id].solid) {
 					arr.push(block);
 				}
 			});
@@ -1399,13 +1423,11 @@ class GameMap {
 
 	breakBlock(i, j, info) {
 		var block = this.get(i, j);
-		if(block.breakable && !block.isBreaking){
-			block.isBreaking = true;
-			block.breakTimer = 0;
-			block.koef = 1;
-			if(info.side && block.id == 12) block.koef = 10;
-			io.to('room' + this.room).emit('blockBreaking', block.physics.rpos, block.koef);
-			this.updateBlock(i, j, info);
+		if(blockInfo[block.id].breakable) {
+			if(!block.breakStack.length) {
+				this.updateBlock(i, j, info);
+			}
+			block.break(info.side, info.roomId);
 			return true;
 		}
 		return false;
@@ -1413,15 +1435,18 @@ class GameMap {
 
 	onBreaking(i, j, source) {
 		var block = this.get(i, j);
-		var stoneCost = block.stoneCost;
 		var pl;
-		if(source.side == 0) pl = rooms[this.room].players[source.gameId];
-		else pl = rooms[this.room].viruses[source.gameId];
-		if(pl) {
-			pl.workers++;
-			pl.stone += stoneCost;
+		if(source.side == 0) {
+			pl = rooms[this.room].players[source.roomId];
+			pl.stone += blockInfo[block.id].stoneCost;
+			pl.iron += blockInfo[block.id].ironCost;
 		}
-		if(this.checkCoords(i, j - 1) && this.get(i, j - 1).needBlock) {
+		else {
+			pl = rooms[this.room].viruses[source.roomId];
+			pl.stone += blockInfo[block.id].organicCost;
+			pl.iron += blockInfo[block.id].poisonCost;
+		}
+		if(this.checkCoords(i, j - 1) && blockInfo[this.get(i, j - 1).id].needBlock) {
 			this.breakBlock(i, j - 1, source);
 			if(pl) {
 				pl.workers--;
@@ -1430,10 +1455,10 @@ class GameMap {
 		// if(block.owner >= 0) {
 		// 	var owner = rooms[this.room].network[block.owner];
 		// 	if(owner.side == 0) {
-		// 		owner = rooms[owner.room].players[owner.gameId];
+		// 		owner = rooms[owner.room].players[owner.roomId];
 		// 	}
 		// 	else {
-		// 		owner = rooms[owner.room].viruses[owner.gameId];
+		// 		owner = rooms[owner.room].viruses[owner.roomId];
 
 		// 		if(owner.core.rpos.x == i && owner.core.rpos.y == j) {
 		// 			owner.alive = false;
@@ -1458,9 +1483,7 @@ class GameMap {
 			if(res.changed) {
 				this.onBreaking(i, j, item.info);
 			}
-			if(!res.update || res.changed) {
-				self.emitBlock(i, j);
-			}
+			self.emitBlock(i, j);
 		}
 		this.updateQueue = nq;
 	}
@@ -1509,13 +1532,12 @@ class Room {
 			this.map.generateMap();
 		}
 		this.network.forEach(function(item, i, arr) {
+			item.roomId = self.players.length;
 			if(item.side == 0) {
-				item.gameId = self.players.length;
 				var player = new Player(item, self.map);
 				self.players.push(player);
 			}
 			else {
-				item.gameId = self.viruses.length;
 				var player = new Virus(item, self.map);
 				self.viruses.push(player);
 			}
@@ -1661,14 +1683,29 @@ function loadFiles() {
 				info.id = Number(cur[0]);
 				info.solid = Number(cur[1]);
 				info.breakable = Number(cur[2]);
-				info.breakTime = Number(cur[3]);
-				info.energyCost = Number(cur[4]);
+				info.peopleHardness = Number(cur[3]);
+				info.virusHardness = Number(cur[4]);
 				info.stoneCost = Number(cur[5]);
-				info.needBlock = Number(cur[6]);
-				info.name = cur[7];
-				info.textureOffset = new Vector2(Number(cur[8]), Number(cur[9]));
-				info.multiTexture = Number(cur[10]);
-				info.damage = Number(cur[11]);
+				info.ironCost = Number(cur[6]);
+				info.organicCost = Number(cur[7]);
+				info.poisonCost = Number(cur[8]);
+				info.needBlock = Number(cur[9]);
+				info.name = cur[10];
+				info.textureOffset = new Vector2(Number(cur[11]), Number(cur[12]));
+				info.multiTexture = Number(cur[13]);
+				info.damage = Number(cur[14]);
+
+				// info.id = Number(cur[0]);
+				// info.solid = Number(cur[1]);
+				// info.breakable = Number(cur[2]);
+				// info.breakTime = Number(cur[3]);
+				// info.energyCost = Number(cur[4]);
+				// info.stoneCost = Number(cur[5]);
+				// info.needBlock = Number(cur[6]);
+				// info.name = cur[7];
+				// info.textureOffset = new Vector2(Number(cur[8]), Number(cur[9]));
+				// info.multiTexture = Number(cur[10]);
+				// info.damage = Number(cur[11]);
 				blockInfo.push(info);
 			}
 			setup();
