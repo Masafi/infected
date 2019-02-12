@@ -2,3 +2,4 @@ node_modules
 utils
 log.txt
 server/server_new.js
+jwtprivate.key

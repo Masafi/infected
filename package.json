@@ -2,12 +2,12 @@
 	"name": "infected-server",
 	"version": "0.1.0",
 	"dependencies": {
-		"socket.io": "2.0.3",
-		"express": "4.15.4",
-		"jsonwebtoken": "8.0.1",
-		"taffydb": "2.7.3",
-		"csv": "1.1.1",
-		"sanitize-html": "1.16.1"
+		"csv": "5.1.1",
+		"express": "4.16.4",
+		"jsonwebtoken": "8.4.0",
+		"sanitize-html": "1.20.0",
+		"socket.io": "2.2.0",
+		"taffydb": "2.7.3"
 	},
 	"description": "Infected.io game server",
 	"main": "server.js",
@@ -16,7 +16,7 @@
 		"url": "https://github.com/masafi/infected.git"
 	},
 	"scripts": {
-		"start": "node ./server/server.js"
+		"start": "node ./server/server_new.js"
 	},
-	"author": "Masai"
+	"author": "Masafi"
 }
