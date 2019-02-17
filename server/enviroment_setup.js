@@ -28,6 +28,10 @@ function enviromentSetup() {
 		log(err, 2);
 		process.exit(1);
 	});
+
+	//Streams for log output
+	global.logFile = fs.createWriteStream(path + 'log.txt', { flags: 'a' });
+	global.logStdout = process.stdout;
 }
 
 module.exports = enviromentSetup

@@ -1,5 +1,5 @@
 //Vars
-var socket = io.connect(window.location.href, { secure: true });
+var socket = io.connect();
 var token = undefined;
 var chunksGot = 0;
 var team = false;

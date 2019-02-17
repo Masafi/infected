@@ -18,6 +18,7 @@ enviromentSetup()
 server.listen(httpPort)
 app.use(express.static('client'))
 
+//Singletons
 var lobbyManager = new LobbyManager()
 var userManager = new UserManager()
 
@@ -48,6 +49,8 @@ io.on('connection', function(socket) {
 		//socket.emit('reg-success', user.id, user.token, user.nickname)
 	})
 
+//There are 4 rooms events handlers
+//Just checks token and ask lobbyManager to do the job
 	socket.on('joinRoom', function(token, roomId) {
 		var user = userManager.verifyToken(token)
 		if(!user) {
@@ -105,8 +108,6 @@ io.on('connection', function(socket) {
 		}
 	})
 })
-
-
 
 function update() {
 

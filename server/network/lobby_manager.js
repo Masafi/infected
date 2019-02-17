@@ -1,29 +1,54 @@
-const Lobby = require('lobby.js')
-const RoomManager = require('room_manager.js')
+//Dependencies
+const Lobby = require('./lobby.js')
+const RoomManager = require('./room_manager.js')
+const log = require('../utils.js')
 const { roomsNumber } = require('../settings.js')
 
+//Responsible for handling lobby events and starting rooms
 class LobbyManager {
 	constructor() {
-		this.roomManager = new RoomManager()
+		this.roomManager = undefined
 		this.lobbies = []
 
 		this.lobbies.length = roomsNumber
 		for(let i = 0; i < roomsNumber; i++) {
 			this.lobbies[i] = new Lobby(i)
+			this.lobbies[i].onStart = this.onStart.bind(this)
 		}
 
 		var self = this
-		this.roomManager.setExitHandler((roomId) => {
+		this.roomManager.registerExitHandler((roomId) => {
 			self.onExit(roomId)
 		})
 	}
 
+	registerRoomManager(roomManager) {
+		this.roomManager = roomManager
+	}
+
 	onExit(roomId) {
-		var lobbie = this.lobbies[roomId]
-		for(let i = lobbie.players.length - 1; i >= 0; i--) {
-			lobbie.leaveRoom(lobbie.players[i])
+		log("Room " + roomId + " stoped")
+		var lobby = this.lobbies[roomId]
+		for(let i = lobby.users.length - 1; i >= 0; i--) {
+			lobby.leaveRoom(lobby.users[i])
 		}
-		lobbie.restart()
+		lobby.restart()
+	}
+
+	onStart(roomId) {
+		log("Room " + roomId + " started")
+		var lobby = this.lobbies[roomId]
+		
+		var self = this
+		this.roomManager.createRoom(roomId)
+		var users = []
+		lobby.users.forEach((user) => {
+			users.push({token: user.token, side: user.side})
+		})
+		this.roomManager.sendMessage({type: "users", users})
+		lobby.users.forEach((user) => {
+			self.roomManager.rerouteSocket(player.socket, roomId)
+		})
 	}
 
 	joinRoom(user, roomId) {
@@ -57,30 +82,11 @@ class LobbyManager {
 		return this.lobbies[user.roomId].changeSide(user, side)
 	}
 
-	startGame(roomId) {
-		var lobby = this.lobbies[roomId]
-		lobby.started = true
-		
-		var self = this
-		this.roomManager.createRoom(roomId)
-		lobby.players.forEach((player) => {
-			self.roomManager.rerouteSocket(player.socket, roomId)
-		})
-	}
-
-	update() {
-		this.lobbies.forEach((lobby, id) => {
-			if(lobby.update()) {
-				this.startGame(id)
-			}
-		})
-	}
-
 	getDataToSend() {
 		return this.lobbies.map((lobby) => {
 			return {
 				id: lobby.id,
-				playersNumber: lobby.players.length,
+				playersNumber: lobby.users.length,
 				started: lobby.started,
 				startedTime: lobby.startedTime,
 			}

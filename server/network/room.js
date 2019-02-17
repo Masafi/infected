@@ -4,37 +4,54 @@ const app = express()
 const server = require('http').Server(app)
 const io = require('socket.io')(server)
 const jwt = require('jsonwebtoken')
-const RoomManager = require('./room_manager.js')
+const UserManager = require('./UserManager.js')
+const log = require('../utils.js')
 
 const { jwtSecretKey, basicPort } = require('../settings.js')
 
 //Setting up a http+socket server
-var id = process.argv[2]
-var port = basicPort + parseInt(id)
+var ROOM_ID = process.argv[2]
+var port = basicPort + parseInt(ROOM_ID)
 server.listen(port)
 
-//for clarity
-console.log("room " + id + " opened")
+//Log room creation
+log("Room " + ROOM_ID + " created")
+
+var userManager = new UserManager()
 
 //Setting a socket behavior
 io.on('connection', function(socket) {
 	//We assume, that client registered already, so we'll just wait until he sends his token
 	socket.on('verifyToken', function(token) {
-		var good = true
-		try {
-			var decoded = jwt.verify(token, jwtSecretKey);
-		} catch(err) {
-			good = false
+		var user = userManager.verifyToken(token)
+		if(!user) {
+			userManager.rerouteSocketMain(socket)
+			return
 		}
 
-		if(good) {
-			console.log(token.substr(0, 5) + ' connected to ' + id) //example
-			socket.emit('reg-success', token, id)
-		}
+		socket.emit('join-success', ROOM_ID)
 	})
 })
 
+//Main server messaging
+
+//Handlers
+var onServerMessage = {
+	users: (message) => {
+		message.users.forEach((data) => {
+			var user = userManager.addExistingUser(data.token)
+			user.side = data.side
+		})
+	},
+}
+
+//Register them
+process.on('message', (message) => {
+	var handler = onServerMessage[message.type]()
+});
+
+//
 setTimeout(() => {
-	console.log("room " + id + " closed")
+	console.log("Room " + ROOM_ID + " closed")
 	process.exit()
-}, 10000)
+}, 60000)

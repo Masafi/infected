@@ -1,7 +1,10 @@
+//Dependencies
 const User = require('./user.js')
 const { jwtSecretKey } = require('../settings.js')
 const { sanitizeString } = require('../utils.js')
 
+//Manages user registation and verification
+//Also can return user by token or socket
 class UserManager {
 	constructor() {
 		this.users = {}
@@ -29,9 +32,9 @@ class UserManager {
 	findFirstId() {
 		var used = []
 		used.length = this.users.length + 1
-		Object.keys(this.users).forEach((player) => {
-			if(player.id < used.length) {
-				used[player.id] = true
+		Object.keys(this.users).forEach((user) => {
+			if(user.id < used.length) {
+				used[user.id] = true
 			}
 		})
 		for(let i = 0; i < used.length; i++) {
@@ -59,6 +62,21 @@ class UserManager {
 		this.users[user.token] = user
 		this.socketMap[socket.id] = user.token
 		return user
+	}
+
+	addExistingUser(token) {
+		try {
+			var decoded = jwt.verify(token, jwtSecretKey)
+			var user = new User(undefined, decoded.username, decoded.id)
+			this.users[token] = user
+			return user
+		} catch(err) {
+			return undefined
+		}
+	}
+
+	rerouteSocketMain(socket) {
+		socket.emit('reroute', 'main')
 	}
 
 	getUser(token) {

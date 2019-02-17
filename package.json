@@ -16,7 +16,7 @@
 		"url": "https://github.com/masafi/infected.git"
 	},
 	"scripts": {
-		"start": "node ./server/server_new.js"
+		"start": "node ./server/server.js"
 	},
 	"author": "Masafi"
 }

@@ -3,31 +3,44 @@ const { lobbySize, readyTimeout } = require('../settings.js')
 class Lobby {
 	constructor(id) {
 		this.id = id
-		this.players = []
+		this.users = []
+
 		this.startedTime = -1
-		this.started = false
+		this.startTimer = undefined
+		this.onStart = undefined
+	}
+
+	registerOnStart(onStart) {
+		this.onStart = onStart
 	}
 
 	countSides() {
 		var sideSize = [0, 0]
-		this.players.forEach((player) => {
-			sideSize[player.side]++
+		this.users.forEach((user) => {
+			sideSize[user.side]++
 		})
 		return sideSize
 	}
 
-	checkStart() {
+	checkStart(forceStop) {
 		var ready = 0
-		this.players.forEach((player, i) => {
-			if(player.ready) {
-				ready++
-			}
-		})
-		if(ready == this.players.length) {
-			this.startedTime = Date.now()
+		if(!forceStop) {
+			var sides = countSides()
+			ready = sides[0] + sides[1]
+		}
+		if(ready && ready == this.users.length) {
+			var self = this
+			this.startTimer = setTimeout(() => {
+				self.startedTime = Date.now()
+				self.onStart && self.onStart(self.id)
+			}, readyTimeout)
 		}
 		else {
-			this.startedTime = -1
+			if(this.startTimer) {
+				clearTimeout(this.startTimer)
+				this.startedTime = -1
+				this.startTimer = undefined
+			}
 		}
 	}
 
@@ -36,8 +49,8 @@ class Lobby {
 		if(user.room != this.id)
 			return index
 
-		this.players.forEach((player, i) => {
-			if(user.token == player.token) {
+		this.users.forEach((user, i) => {
+			if(user.token == user.token) {
 				index = i
 			}
 		})
@@ -45,7 +58,7 @@ class Lobby {
 	}
 
 	joinRoom(user) {
-		if(this.players.length >= lobbySize * 2)
+		if(this.users.length >= lobbySize * 2)
 			return false
 		if(user.room == this.id)
 			return true
@@ -60,7 +73,7 @@ class Lobby {
 		user.room = this.id
 		user.socket.leave('main')
 		user.socket.join(this.id)
-		this.players.push(user)
+		this.users.push(user)
 
 		checkStart()
 
@@ -77,7 +90,7 @@ class Lobby {
 		user.side = 0
 		user.socket.leave(this.id)
 		user.socket.join('main')
-		this.players.slice(index, 1)
+		this.users.slice(index, 1)
 
 		checkStart()
 
@@ -119,29 +132,14 @@ class Lobby {
 		return true
 	}
 
-	update() {
-		if(this.started)
-			return false
-
-		if(this.startedTime == -1) 
-			return false
-		
-		var time = Date.now()
-		if(time - this.startedTime >= readyTimeout) {
-			return true
-		}
-
-		return false
-	}
-
 	restart() {
-		this.players.length = 0
+		this.users.length = 0
 		this.startedTime = -1
-		this.started = false
+		this.startTimer = undefined
 	}
 
 	getDataToSend() {
-		return this.players.map((player) => {
+		return this.users.map((user) => {
 			return {
 				id = user.id,
 				nickname = user.nickname,
