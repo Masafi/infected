@@ -2,14 +2,14 @@
 const fs = require('fs');
 
 //Your secret key for encoding tokens
-const jwtSecretKey = fs.readFileSync('jwtprivate.key')
+const jwtSecretKey = fs.readFileSync('./server/jwtprivate.key')
 //HTTP port for main and http server
-const httpPort = 80
+const httpPort = 3000
 //Path to a child module (room module)
 const moduleName = './server/network/room.js'
 //Port, from which to start
 //i.e. room with id, will have port = (basicPort + id)
-const basicPort = 3000
+const basicPort = 3001
 //Lobby max size
 //Per side
 const lobbySize = 8
@@ -24,4 +24,6 @@ module.exports = {
 	moduleName,
 	basicPort,
 	lobbySize,
+	roomsNumber,
+	readyTimeout,
 }

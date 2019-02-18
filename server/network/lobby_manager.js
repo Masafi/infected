@@ -1,7 +1,5 @@
 //Dependencies
 const Lobby = require('./lobby.js')
-const RoomManager = require('./room_manager.js')
-const log = require('../utils.js')
 const { roomsNumber } = require('../settings.js')
 
 //Responsible for handling lobby events and starting rooms
@@ -15,15 +13,14 @@ class LobbyManager {
 			this.lobbies[i] = new Lobby(i)
 			this.lobbies[i].onStart = this.onStart.bind(this)
 		}
-
-		var self = this
-		this.roomManager.registerExitHandler((roomId) => {
-			self.onExit(roomId)
-		})
 	}
 
 	registerRoomManager(roomManager) {
 		this.roomManager = roomManager
+		var self = this
+		this.roomManager.registerExitHandler((roomId) => {
+			self.onExit(roomId)
+		})
 	}
 
 	onExit(roomId) {
@@ -45,16 +42,19 @@ class LobbyManager {
 		lobby.users.forEach((user) => {
 			users.push({token: user.token, side: user.side})
 		})
-		this.roomManager.sendMessage({type: "users", users})
-		lobby.users.forEach((user) => {
-			self.roomManager.rerouteSocket(player.socket, roomId)
-		})
+		this.roomManager.sendMessage(roomId, {type: "users", users})
+
+		setTimeout(() => {
+			lobby.users.forEach((user) => {
+				self.roomManager.rerouteSocket(user.socket, roomId)
+			})
+		}, 1000)
 	}
 
 	joinRoom(user, roomId) {
 		if(user.roomId != -1)
 			return false
-		
+
 		if(roomId < 0 || roomId >= roomsNumber)
 			return false
 
@@ -68,11 +68,11 @@ class LobbyManager {
 		return this.lobbies[user.roomId].leaveRoom(user)
 	}
 
-	userReady(user, ready) {
+	userReady(user) {
 		if(user.roomId == -1)
 			return false
 
-		return this.lobbies[user.roomId].userReady(user, ready)
+		return this.lobbies[user.roomId].userReady(user)
 	}
 
 	changeSide(user, side) {
@@ -87,7 +87,6 @@ class LobbyManager {
 			return {
 				id: lobby.id,
 				playersNumber: lobby.users.length,
-				started: lobby.started,
 				startedTime: lobby.startedTime,
 			}
 		})

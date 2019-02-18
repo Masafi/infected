@@ -1,4 +1,5 @@
 //Dependencies
+const jwt = require('jsonwebtoken')
 const User = require('./user.js')
 const { jwtSecretKey } = require('../settings.js')
 const { sanitizeString } = require('../utils.js')
@@ -9,6 +10,7 @@ class UserManager {
 	constructor() {
 		this.users = {}
 		this.socketMap = {}
+		this.lastId = 0
 	}
 
 	updateSocket(socket, token) {
@@ -24,26 +26,12 @@ class UserManager {
 			var decoded = jwt.verify(token, jwtSecretKey)
 			user = this.users[token]
 		} catch(err) {
-			
 		}
 		return user
 	}
 
-	findFirstId() {
-		var used = []
-		used.length = this.users.length + 1
-		Object.keys(this.users).forEach((user) => {
-			if(user.id < used.length) {
-				used[user.id] = true
-			}
-		})
-		for(let i = 0; i < used.length; i++) {
-			if(!used[i]) {
-				return i
-			}
-		}
-		//must never work
-		return this.users.length + 1
+	getNewId() {
+		return this.lastId++
 	}
 
 	registerUser(socket, name) {
@@ -53,12 +41,12 @@ class UserManager {
 			return user
 		}
 
-		user = getUserBySocket(socket)
+		user = this.getUserBySocket(socket)
 		if(user) {
 			return user
 		}
 
-		user = new User(socket, name, this.findFirstId())
+		user = new User(socket, sanitName, this.getNewId())
 		this.users[user.token] = user
 		this.socketMap[socket.id] = user.token
 		return user

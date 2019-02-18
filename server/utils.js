@@ -1,4 +1,6 @@
 const sanitizeHtml = require('sanitize-html');
+const util = require('util');
+const path = require('path')
 
 //Sanitizes string, removes all html tags, checks for emptiness
 function sanitizeString(str) {
@@ -23,6 +25,13 @@ function sanitizeString(str) {
 
 //My log function with date, line and output to file too
 function log(string, warn = 0) {
+	var orig = Error.prepareStackTrace
+	Error.prepareStackTrace = function(_, stack){ return stack; };
+	var err = new Error;
+	Error.captureStackTrace(err, this);
+	var stack = err.stack;
+	Error.prepareStackTrace = orig;
+
 	var d = new Date();
 	var p = (v) => { return (v < 10 ? '0' : '') + v; }
 	var pref = p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds()) + " [";
@@ -31,9 +40,11 @@ function log(string, warn = 0) {
 	else if(warn == 1) pref += 'WARN';
 	else if(warn == 2) pref += 'ERR';
 	else pref += 'ERR#' + warn;
-	pref += ':' + __line + ']: ';
+	pref += '] ' + path.basename(stack[1].getFileName()) + ':' + stack[1].getLineNumber() + ': ';
 	if(warn >= 0) logFile.write(pref + util.format(string) + '\n');
 	logStdout.write(pref + util.format(string) + '\n');
 }
+
+global.log = log
 
 module.exports = { sanitizeString, log }

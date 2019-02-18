@@ -1,4 +1,5 @@
 //Dependencies
+const jwt = require('jsonwebtoken')
 const { jwtSecretKey } = require('../settings.js')
 
 //Holds user information
@@ -11,8 +12,8 @@ class User {
 		this.id = id
 		this.socket = socket
 		this.username = name
-		this.token = jwt.sign({ username: this.username, socket_id: socket.id, id: this.id }, jwtSecretKey)
-		this.room = -1
+		this.token = jwt.sign({ username: this.username, socket_id: (socket ? socket.id : "noid"), id: this.id }, jwtSecretKey)
+		this.roomId = -1
 		this.online = false
 		this.leftTime = Date.now()
 

@@ -25,10 +25,13 @@ class Lobby {
 	checkStart(forceStop) {
 		var ready = 0
 		if(!forceStop) {
-			var sides = countSides()
-			ready = sides[0] + sides[1]
+			this.users.forEach((user) => {
+				if(user.ready) {
+					ready++
+				}
+			})
 		}
-		if(ready && ready == this.users.length) {
+		if(ready != 0 && ready == this.users.length) {
 			var self = this
 			this.startTimer = setTimeout(() => {
 				self.startedTime = Date.now()
@@ -46,7 +49,7 @@ class Lobby {
 
 	findUser(user) {
 		var index = -1
-		if(user.room != this.id)
+		if(user.roomId != this.id)
 			return index
 
 		this.users.forEach((user, i) => {
@@ -60,7 +63,7 @@ class Lobby {
 	joinRoom(user) {
 		if(this.users.length >= lobbySize * 2)
 			return false
-		if(user.room == this.id)
+		if(user.roomId == this.id)
 			return true
 
 		var sideSize = this.countSides()
@@ -70,12 +73,12 @@ class Lobby {
 			user.side = 1
 
 		user.ready = false
-		user.room = this.id
+		user.roomId = this.id
 		user.socket.leave('main')
 		user.socket.join(this.id)
 		this.users.push(user)
 
-		checkStart()
+		this.checkStart()
 
 		return true
 	}
@@ -85,26 +88,26 @@ class Lobby {
 		if(index == -1)
 			return false
 
-		user.room = -1
+		user.roomId = -1
 		user.ready = false
 		user.side = 0
 		user.socket.leave(this.id)
 		user.socket.join('main')
 		this.users.slice(index, 1)
 
-		checkStart()
+		this.checkStart()
 
 		return true
 	}
 
-	userReady(user, ready) {
+	userReady(user) {
 		let index = this.findUser(user)
 		if(index == -1)
 			return false
 
-		user.ready = ready
+		user.ready = !user.ready
 
-		checkStart()
+		this.checkStart()
 
 		return true
 	}
@@ -127,7 +130,7 @@ class Lobby {
 		user.side = side
 		user.ready = false
 
-		checkStart()
+		this.checkStart()
 
 		return true
 	}
@@ -139,14 +142,17 @@ class Lobby {
 	}
 
 	getDataToSend() {
-		return this.users.map((user) => {
-			return {
-				id = user.id,
-				nickname = user.nickname,
-				ready = user.ready,
-				side = user.side,
-			}
-		})
+		return {
+			id: this.id,
+			users: this.users.map((user) => {
+				return {
+					id: user.id,
+					username: user.username,
+					ready: user.ready,
+					side: user.side,
+				}
+			})
+		}
 	}
 
 	emit(io) {

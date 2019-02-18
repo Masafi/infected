@@ -18,20 +18,23 @@
 	<script type="text/javascript" src="libs/js.cookie.js"></script>
 </head>
 <body>
-	<script type="text/javascript" src="src/game.js"></script>
 	<script type="text/javascript" src="src/client.js"></script>
+	<!--
+	<script type="text/javascript" src="src/game.js"></script>
 	<canvas id="game" width="500" height="500" onmousedown="mouseDown(event, this)" onmousemove="mouseMoved(event, this)" oncontextmenu="event.preventDefault()">
+
 	</canvas>
+	-->
 
 	<div id="login-form" class="align-abs-center form-small">
 		<div class="card">
 			<h2 class="card-header text-center">Infected.io</h2>
 			<div class="card-body">
 				<div class="form-group">
-					<input id="login-input" class="form-control" type="text" placeholder="Nickname" onkeydown="if (event.keyCode == 13) play()">
+					<input id="login-input" class="form-control" type="text" placeholder="Nickname" onkeydown="if (event.keyCode == 13) register()">
 					<div class="invalid-feedback">Wrong username</div>
 				</div>
-				<button id="login-button" class="btn btn-primary btn-block">Play</button>
+				<button id="login-button" class="btn btn-primary btn-block" onclick="register()">Play</button>
 			</div>
 			<div id="login-error" class="card-footer text-danger text-center" style="display: none;"></div>
 		</div>
@@ -50,7 +53,7 @@
 	<div id="players-form" class="align-abs-center form-medium" style="display: none;">
 		<div class="card text-center">
 			<div class="card-header d-flex align-items-center">
-                <button id="leave-button" class="btn btn-outline-dark">
+                <button id="leave-button" class="btn btn-outline-dark" onclick="leaveRoom()">
                     <i class="fa fa-arrow-left" aria-hidden="true"></i>
                 </button>
                 <h4 class="w-100 mb-0"></h4>
@@ -61,11 +64,11 @@
 			<div class="card-body">
 				<div class="row">
 					<div class="col-lg-6 form-group">
-                        <button class="btn btn-success btn-block btn-lg mb-3" onclick="joinSide(0)">Humans</button>
+                        <button class="btn btn-success btn-block btn-lg mb-3" onclick="changeSide(0)">Humans</button>
 						<div id="players-list-humans" class="list-group"></div>
 					</div>
 					<div class="col-lg-6 form-group">
-                        <button class="btn btn-danger btn-block btn-lg mb-3" onclick="joinSide(1)">Virus</button>
+                        <button class="btn btn-danger btn-block btn-lg mb-3" onclick="changeSide(1)">Virus</button>
 						<div id="players-list-virus" class="list-group"></div>
 					</div>
 				</div>
@@ -74,7 +77,7 @@
 			<div class="card-footer">
 				<div id="players-footer-default" class="d-flex align-items-center justify-content-between">
 					<p class="mb-0">Waiting for more players...</p>
-					<button id="ready-button" class="btn btn-primary">Ready</button>
+					<button id="ready-button" class="btn btn-primary" onclick="userReady()">Ready</button>
 				</div>
 			</div>
 		</div>
