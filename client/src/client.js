@@ -1,5 +1,5 @@
-var IP = 'http://localhost'
-var mainSocket = io.connect(IP + ':' + 3000)
+var IP = window.location.href.slice(0, -1) //remove last '/'
+var mainSocket = io.connect(IP)
 var roomSocket = undefined
 var token = undefined
 var isInMain = true

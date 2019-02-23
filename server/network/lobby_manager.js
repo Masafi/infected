@@ -6,6 +6,7 @@ const { roomsNumber } = require('../settings.js')
 class LobbyManager {
 	constructor() {
 		this.roomManager = undefined
+		this.onRoomChangedHandler = undefined
 		this.lobbies = []
 
 		this.lobbies.length = roomsNumber
@@ -23,6 +24,10 @@ class LobbyManager {
 		})
 	}
 
+	registerRoomChangedHandler(handler) {
+		this.onRoomChangedHandler = handler
+	}
+
 	onExit(roomId) {
 		log("Room " + roomId + " stoped")
 		var lobby = this.lobbies[roomId]
@@ -30,6 +35,7 @@ class LobbyManager {
 			lobby.leaveRoom(lobby.users[i])
 		}
 		lobby.restart()
+		this.onRoomChanged(roomId)
 	}
 
 	onStart(roomId) {
@@ -49,6 +55,19 @@ class LobbyManager {
 				self.roomManager.rerouteSocket(user.socket, roomId)
 			})
 		}, 1000)
+
+		this.onRoomChanged(roomId)
+	}
+
+	onRoomChanged(roomId) {
+		this.onRoomChangedHandler && this.onRoomChangedHandler(roomId)
+	}
+
+	handleRoomEvent(res, roomId) {
+		if(res) {
+			this.onRoomChanged(roomId)
+		}
+		return res
 	}
 
 	joinRoom(user, roomId) {
@@ -58,28 +77,41 @@ class LobbyManager {
 		if(roomId < 0 || roomId >= roomsNumber)
 			return false
 
-		return this.lobbies[roomId].joinRoom(user)
+		return this.handleRoomEvent(
+			this.lobbies[roomId].joinRoom(user),
+			roomId
+		)
 	}
 
 	leaveRoom(user) {
 		if(user.roomId == -1)
 			return false
 
-		return this.lobbies[user.roomId].leaveRoom(user)
+		var roomId = user.roomId
+		return this.handleRoomEvent(
+			this.lobbies[user.roomId].leaveRoom(user),
+			roomId
+		)
 	}
 
 	userReady(user) {
 		if(user.roomId == -1)
 			return false
 
-		return this.lobbies[user.roomId].userReady(user)
+		return this.handleRoomEvent(
+			this.lobbies[user.roomId].userReady(user),
+			user.roomId
+		)
 	}
 
 	changeSide(user, side) {
 		if(user.roomId == -1)
 			return false
 
-		return this.lobbies[user.roomId].changeSide(user, side)
+		return this.handleRoomEvent(
+			this.lobbies[user.roomId].changeSide(user, side),
+			user.roomId
+		)
 	}
 
 	getDataToSend() {

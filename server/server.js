@@ -60,11 +60,7 @@ io.on('connection', (socket) => {
 			return
 		}
 
-		var success = lobbyManager.joinRoom(user, roomId)
-		if(success) {
-			lobbyManager.emit(io)
-			lobbyManager.lobbies[roomId].emit(io)
-		}
+		lobbyManager.joinRoom(user, roomId)
 	})
 
 	socket.on('leaveRoom', (token) => {
@@ -75,12 +71,7 @@ io.on('connection', (socket) => {
 			return
 		}
 
-		var roomId = user.roomId
-		var success = lobbyManager.leaveRoom(user)
-		if(success) {
-			lobbyManager.emit(io)
-			lobbyManager.lobbies[roomId].emit(io)
-		}
+		lobbyManager.leaveRoom(user)
 	})
 
 	socket.on('userReady', (token) => {
@@ -91,11 +82,7 @@ io.on('connection', (socket) => {
 			return
 		}
 
-		var success = lobbyManager.userReady(user)
-		if(success) {
-			lobbyManager.emit(io)
-			lobbyManager.lobbies[user.roomId].emit(io)
-		}
+		lobbyManager.userReady(user)
 	})
 
 	socket.on('changeSide', (token, side) => {
@@ -106,16 +93,18 @@ io.on('connection', (socket) => {
 			return
 		}
 
-		var success = lobbyManager.changeSide(user, side)
-		if(success) {
-			lobbyManager.emit(io)
-			lobbyManager.lobbies[user.roomId].emit(io)
-		}
+		lobbyManager.changeSide(user, side)
 	})
 })
 
 function setup() {
 	lobbyManager.registerRoomManager(roomManager)
+	lobbyManager.registerRoomChangedHandler((roomId) => {
+		lobbyManager.emit(io)
+		if(lobbyManager.lobbies[roomId].startedTime == -1) {
+			lobbyManager.lobbies[roomId].emit(io)
+		}
+	})
 	log("Server started successfully")
 }
 

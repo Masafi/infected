@@ -52,8 +52,8 @@ class Lobby {
 		if(user.roomId != this.id)
 			return index
 
-		this.users.forEach((user, i) => {
-			if(user.token == user.token) {
+		this.users.forEach((usr, i) => {
+			if(usr.token == user.token) {
 				index = i
 			}
 		})
@@ -67,7 +67,7 @@ class Lobby {
 			return true
 
 		var sideSize = this.countSides()
-		if(sideSize[1] <= sideSize[0])
+		if(sideSize[0] <= sideSize[1])
 			user.side = 0
 		else
 			user.side = 1
@@ -93,7 +93,7 @@ class Lobby {
 		user.side = 0
 		user.socket.leave(this.id)
 		user.socket.join('main')
-		this.users.slice(index, 1)
+		this.users.splice(index, 1)
 
 		this.checkStart()
 
