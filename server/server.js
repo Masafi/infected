@@ -45,15 +45,24 @@ io.on('connection', (socket) => {
 			socket.emit('reg-error', undefined)
 			return
 		}
+		userManager.reRegisterSocket(user, socket)
+		socket.emit('reg-success', user.id, user.token, user.username)
 
-		//TODO: check, is player in the game, and if so, send him there
-		//socket.emit('reg-success', user.id, user.token, user.username)
+		lobbyManager.resume(user)
+	})
+
+	socket.on('disconnect', () => {
+		var user = userManager.getUserBySocket(socket)
+		if(!user) {
+			return;
+		}
+
+		lobbyManager.disconnect(user)
 	})
 
 //There are 4 rooms events handlers
 //Just checks token and ask lobbyManager to do the job
 	socket.on('joinRoom', (token, roomId) => {
-		log('joinRoom ' + token.substr(0, 5) + ' ' + roomId)
 		var user = userManager.verifyToken(token)
 		if(!user) {
 			socket.emit('reg-error', undefined)
@@ -64,7 +73,6 @@ io.on('connection', (socket) => {
 	})
 
 	socket.on('leaveRoom', (token) => {
-		log('leaveRoom ' + token.substr(0, 5))
 		var user = userManager.verifyToken(token)
 		if(!user) {
 			socket.emit('reg-error', undefined)
@@ -75,7 +83,6 @@ io.on('connection', (socket) => {
 	})
 
 	socket.on('userReady', (token) => {
-		log('userReady ' + token.substr(0, 5))
 		var user = userManager.verifyToken(token)
 		if(!user) {
 			socket.emit('reg-error', undefined)
@@ -86,7 +93,6 @@ io.on('connection', (socket) => {
 	})
 
 	socket.on('changeSide', (token, side) => {
-		log('changeSide ' + token.substr(0, 5) + ' ' + side)
 		var user = userManager.verifyToken(token)
 		if(!user) {
 			socket.emit('reg-error', undefined)

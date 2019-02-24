@@ -14,8 +14,7 @@ class User {
 		this.username = name
 		this.token = jwt.sign({ username: this.username, socket_id: (socket ? socket.id : "noid"), id: this.id }, jwtSecretKey)
 		this.roomId = -1
-		this.online = false
-		this.leftTime = Date.now()
+		this.online = -1
 
 		//Lobby
 		this.ready = false

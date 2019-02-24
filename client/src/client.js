@@ -1,5 +1,5 @@
-var IP = window.location.href.slice(0, -1) //remove last '/'
-var mainSocket = io.connect(IP)
+var IP = window.location.hostname
+var mainSocket = undefined
 var roomSocket = undefined
 var token = undefined
 var isInMain = true
@@ -54,67 +54,71 @@ function setupRoomSocket(socket) {
 	})
 }
 
-//Connection logic
-//Responsible for switching from rooms and main server
-mainSocket.on('reroute', (port) => {
-	console.log('reroute', port)
-	mainSocket.disconnect()
-	isInMain = false
-	roomSocket = io.connect(IP + ':' + port, { reconnection: false })
-	setupRoomSocket(roomSocket)
-})
-
-mainSocket.on('connect', () => {
-	mainSocket.emit('verifyToken', token)
-})
-
-mainSocket.on('reg-success', (new_id, new_token, new_nickname) => {
-	console.log('reg-success', new_id, new_token, new_nickname)
-	token = new_token
-	Cookies.set('token', token)
-	console.log('Successfully registered at main')
-})
-
-mainSocket.on('reg-error', (error) => {
-	console.log('reg-error', error)
-	setUIState('login', error)
-})
-
-mainSocket.on('lobby-update', (data) => {
-	console.log('lobby-update', data)
-	setUIState('lobby')
-	$('#players-form').find('h4').text('Room ' + (data.id + 1))
-	data.users.forEach((user) => {
-		var parent = !user.side ? $('#players-list-humans') : $('#players-list-virus')
-		var element = $('#players-list-item > *').clone()
-		element.prepend(user.username)
-		if(user.ready) element.find('span').show()
-		parent.append(element)
+function setupMainSocket(socket) {
+	//Connection logic
+	//Responsible for switching from rooms and main server
+	socket.on('reroute', (port) => {
+		console.log('reroute', port)
+		socket.disconnect()
+		isInMain = false
+		roomSocket = io.connect(IP + ':' + port, { reconnection: false })
+		setupRoomSocket(roomSocket)
 	})
-})
 
-mainSocket.on('lobbies-update', (data) => {
-	console.log('lobbies-update', data)
-	setUIState('lobby-select')
-	data.forEach(function(lobby) {
-		var element = $('#rooms-list-item > *').clone()
-		element.prepend('Room ' + (lobby.id + 1))
-		element.find('span').text((lobby.playersNumber).toString())
-		if(lobby.startedTime >= 0) {
-			element.addClass('active')
-			element.find('span').removeClass('badge-primary')
-			element.find('span').addClass('badge-light text-primary')
-		}
-		else {
-			element.click(() => joinRoom(lobby.id))
-		}
-		$('#rooms-list').append(element)
+	socket.on('connect', () => {
+		socket.emit('verifyToken', token)
 	})
-})
+
+	socket.on('reg-success', (new_id, new_token, new_nickname) => {
+		console.log('reg-success', new_id, new_token, new_nickname)
+		token = new_token
+		Cookies.set('token', token)
+		console.log('Successfully registered at main')
+	})
+
+	socket.on('reg-error', (error) => {
+		console.log('reg-error', error)
+		setUIState('login', error)
+	})
+
+	socket.on('lobby-update', (data) => {
+		console.log('lobby-update', data)
+		setUIState('lobby')
+		$('#players-form').find('h4').text('Room ' + (data.id + 1))
+		data.users.forEach((user) => {
+			var parent = !user.side ? $('#players-list-humans') : $('#players-list-virus')
+			var element = $('#players-list-item > *').clone()
+			element.prepend(user.username)
+			if(user.ready) element.find('span').show()
+			parent.append(element)
+		})
+	})
+
+	socket.on('lobbies-update', (data) => {
+		console.log('lobbies-update', data)
+		setUIState('lobby-select')
+		data.forEach(function(lobby) {
+			var element = $('#rooms-list-item > *').clone()
+			element.prepend('Room ' + (lobby.id + 1))
+			element.find('span').text((lobby.playersNumber).toString())
+			if(lobby.startedTime >= 0) {
+				element.addClass('active')
+				element.find('span').removeClass('badge-primary')
+				element.find('span').addClass('badge-light text-primary')
+			}
+			else {
+				element.click(() => joinRoom(lobby.id))
+			}
+			$('#rooms-list').append(element)
+		})
+	})
+}
 
 function setup() {
-	var cookie_token = Cookies.get('token')
+	token = Cookies.get('token')
 	setUIState('login')
+	mainSocket = io.connect(IP + ':' + window.location.port)
+	setupMainSocket(mainSocket)
 }
 
 setup()

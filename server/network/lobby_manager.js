@@ -70,6 +70,26 @@ class LobbyManager {
 		return res
 	}
 
+	resume(user) {
+		user.online = -1
+		if(user.roomId == -1) {
+			user.socket.join('main')
+		}
+		else {
+			user.socket.join(user.roomId)
+			this.roomManager.rerouteSocket(user.socket, user.roomId)
+		}
+	}
+
+	disconnect(user) {
+		user.online = Date.now()
+
+		if(user.roomId != -1 && this.lobbies[user.roomId].startedTime == -1) {
+			this.leaveRoom(user)
+		}
+		this.emitTo(user.socket)
+	}
+
 	joinRoom(user, roomId) {
 		if(user.roomId != -1)
 			return false

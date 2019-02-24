@@ -1,7 +1,7 @@
 //Dependencies
 const jwt = require('jsonwebtoken')
 const User = require('./user.js')
-const { jwtSecretKey } = require('../settings.js')
+const { jwtSecretKey, leftTimeout } = require('../settings.js')
 const { sanitizeString } = require('../utils.js')
 
 //Manages user registation and verification
@@ -52,6 +52,12 @@ class UserManager {
 		return user
 	}
 
+	reRegisterSocket(user, socket) {
+		delete this.socketMap[user.socket.id]
+		user.socket = socket
+		this.socketMap[socket.id] = user.token
+	}
+
 	addExistingUser(token) {
 		try {
 			var decoded = jwt.verify(token, jwtSecretKey)
@@ -61,6 +67,20 @@ class UserManager {
 		} catch(err) {
 			return undefined
 		}
+	}
+
+	deleteLeftUsers() {
+		var tokensToDelete = []
+		var now = Date.now()
+		Object.entries(this.users).forEach((pair) => {
+			if(now - pair[1].online >= leftTimeout) {
+				tokensToDelete.push(pair[0])
+			}
+		})
+		tokensToDelete.forEach((token) => {
+			delete this.socketMap[this.users[token].socket.id]
+			delete this.users[token]
+		})
 	}
 
 	rerouteSocketMain(socket) {

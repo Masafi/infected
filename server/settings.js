@@ -15,8 +15,10 @@ const basicPort = 10000
 const lobbySize = 8
 //How many rooms there will be
 const roomsNumber = 8
-//Time between ready and game start, in millisecs
+//Time between ready and game start, ms
 const readyTimeout = 1000*5
+//Time to kick disconnected user from server, ms
+const leftTimeout = 1000*60*30
 
 module.exports = { 
 	jwtSecretKey,
@@ -26,4 +28,5 @@ module.exports = {
 	lobbySize,
 	roomsNumber,
 	readyTimeout,
+	leftTimeout
 }

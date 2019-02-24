@@ -59,6 +59,6 @@ process.on('message', (message) => {
 
 //
 setTimeout(() => {
-	console.log("Room " + ROOM_ID + " closed")
+	log("Room " + ROOM_ID + " closed")
 	process.exit()
 }, 10000)
