@@ -8,6 +8,7 @@ function setUIState(state, error) {
 	if(state == 'login') {
 		$('#rooms-form').hide()
 		$('#players-form').hide()
+		$('#game-form').hide()
 		$('#login-form').show()
 		if(error) {
 			$('#login-error').html('<b>Error:</b> ' + error)
@@ -20,7 +21,8 @@ function setUIState(state, error) {
 	else if(state == 'lobby-select') {
 		$('#rooms-list').empty()
 		$('#login-form').hide()
-		$('#players-form').hide()	
+		$('#players-form').hide()
+		$('#game-form').hide()
 		$('#rooms-form').show()
 	}
 	else if(state == 'lobby') {
@@ -28,8 +30,15 @@ function setUIState(state, error) {
 		$('#players-list-virus').empty()
 		$('#login-form').hide()
 		$('#rooms-form').hide()
+		$('#game-form').hide()
 		$('#players-form').show()
 		//$('#ready-button').removeClass('disabled')
+	}
+	else if(state == 'game') {
+		$('#login-form').hide()
+		$('#rooms-form').hide()
+		$('#players-form').hide()
+		$('#game-form').show()
 	}
 }
 
@@ -51,6 +60,7 @@ function setupRoomSocket(socket) {
 
 	socket.on('join-success', (roomId) => {
 		console.log('Successfully connected to ' + roomId)
+		setUIState('game')
 	})
 }
 
