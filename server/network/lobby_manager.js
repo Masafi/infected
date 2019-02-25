@@ -74,6 +74,7 @@ class LobbyManager {
 		user.online = -1
 		if(user.roomId == -1) {
 			user.socket.join('main')
+			this.emitTo(user.socket)
 		}
 		else {
 			user.socket.join(user.roomId)
