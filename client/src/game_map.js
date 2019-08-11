@@ -29,7 +29,7 @@ class Block {
 }
 
 class Chunk {
-	constructor() {
+	constructor(scene) {
 		this.chunk = []
 		for (let i = 0; i < ChunkSize.x; i++) {
 			this.chunk.push([])
@@ -37,6 +37,24 @@ class Chunk {
 				this.chunk[i].push(new Block());
 			}
 		}
+	}
+
+	stageToScene() {
+
+	}
+
+	apply(f) {
+		this.chunk.forEach((row, i) => {
+			row.forEach((block, j) => {
+				f(block, i, j)
+			})
+		})
+	}
+
+	update(data) {
+		apply((block, i, j) => {
+			block.update(data[i][j])
+		})
 	}
 }
 
@@ -55,11 +73,7 @@ class GameMap {
 		}
 	}
 
-	setChunk(data) {
-		data.forEach((row) => {
-			row.forEach((block) => {
-
-			})
-		})
+	update(info) {
+		this.chunks(info.data)
 	}
 }
