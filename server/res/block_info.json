@@ -1,0 +1,26 @@
+[
+	{
+		"id": 0,
+		"name": "Air",
+		"hp": 0,
+		"blockClassName": "Air"
+	},
+	{
+		"id": 1,
+		"name": "Grass",
+		"hp": 100,
+		"blockClassName": "Solid"
+	},
+	{
+		"id": 2,
+		"name": "Dirt",
+		"hp": 100,
+		"blockClassName": "Solid"
+	},
+	{
+		"id": 3,
+		"name": "Stone",
+		"hp": 150,
+		"blockClassName": "Solid"
+	}
+]

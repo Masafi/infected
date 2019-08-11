@@ -18,13 +18,16 @@
 	<script type="text/javascript" src="libs/js.cookie.js"></script>
 </head>
 <body>
+	<script type="text/javascript" src="src/vector.js"></script>
+	<script type="text/javascript" src="src/consts.js"></script>
+	<script type="text/javascript" src="src/sprite.js"></script>
 	<script type="text/javascript" src="src/client.js"></script>
-	<!--
+	<script type="text/javascript" src="src/input.js"></script>
+	<script type="text/javascript" src="src/render.js"></script>
 	<script type="text/javascript" src="src/game.js"></script>
-	<canvas id="game" width="500" height="500" onmousedown="mouseDown(event, this)" onmousemove="mouseMoved(event, this)" oncontextmenu="event.preventDefault()">
+	<canvas id="game" width="500" height="500" onmousedown="Input.onMouseDown(event, this)" onmousemove="Input.onMouseMoved(event, this)" oncontextmenu="event.preventDefault()" style="display: none;">
 
 	</canvas>
-	-->
 
 	<div id="login-form" class="align-abs-center form-small">
 		<div class="card">
@@ -91,14 +94,6 @@
 					<div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
 				</div>
 			</div>
-		</div>
-	</div>
-
-	<div id="game-form" class="align-abs-center form-small" style="display: none;">
-		<div class="card">
-			<h2 class="card-header text-center">You are in game</h2>
-			
-			<div id="login-error" class="card-footer text-danger text-center" style="display: none;"></div>
 		</div>
 	</div>
 

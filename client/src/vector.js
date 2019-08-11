@@ -74,5 +74,3 @@ class Vector {
 		return [this.x, this.y]
 	}
 }
-
-module.exports = Vector

@@ -1,5 +1,4 @@
 //File names
-const textureCSV = 'assets/texture.csv';
 const atlasSprite = 'assets/atlas.json';
 const playerSprite = 'assets/player.json';
 const backgroundImage = 'assets/background.png';
@@ -8,13 +7,13 @@ const backgroundImage = 'assets/background.png';
 const keycodes = [[87, 'w'], [65, 'a'], [83, 's'], [68, 'd'], [32, ' '], [49, '1'], [50, '2'], [51, '3'], [52, '4']];
 
 //Global scale
-var gScale = 1.7;
+const gScale = 1.7;
 
 //Player animation states
-var playerAnim = [['player_run', 1, false], 
-				['player_run', 4, true], 
-				['player_jump_up', 2, false], 
-				['player_jump_down', 2, false], 
+const playerAnim = [['player_run', 1, false],
+				['player_run', 4, true],
+				['player_jump_up', 2, false],
+				['player_jump_down', 2, false],
 				['player_hit', 3, false]];
 
 //Pixi initialization
@@ -24,66 +23,6 @@ PIXI.loader
 	.add(playerSprite)
 	.add(backgroundImage)
 	.load(setup);
-
-//Basic utility physics 2d vector class
-class Vector2 {
-	constructor(x, y) {
-		this.x = x || 0;
-		this.y = y || 0;
-	}
-
-	add(v) {
-		return new Vector2(this.x + v.x, this.y + v.y);
-	}
-
-	sub(v) {
-		return new Vector2(this.x - v.x, this.y - v.y);
-	}
-
-	neg() {
-		return new Vector2(-this.x, -this.y);
-	}
-
-	mul(v) {
-		return new Vector2(this.x * v.x, this.y * v.y);
-	}
-
-	div(v) {
-		return new Vector2(this.x / v.x, this.y / v.y);
-	}
-
-	mula(v) {
-		return new Vector2(this.x * v, this.y * v);
-	}
-
-	diva(v) {
-		return new Vector2(this.x / v, this.y / v);
-	}
-
-	max(v) {
-		return new Vector2(Math.max(this.x, v.x), Math.max(this.y, v.y));
-	}
-
-	min(v) {
-		return new Vector2(Math.min(this.x, v.x), Math.min(this.y, v.y));
-	}
-
-	toArr() {
-		return [this.x, this.y];
-	}
-
-	abs() {
-		return Math.sqrt(this.x * this.x + this.y * this.y);
-	}
-
-	copy() {
-		return new Vector2(this.x, this.y);
-	}
-
-	round() {
-		return new Vector2(Math.floor(this.x), Math.floor(this.y));
-	}
-}
 
 //Vars
 var renderer;
@@ -180,7 +119,7 @@ class PhysicPrimitive {
 		this._pos = npos;
 		this._rpos = npos.div(this.rscale);
 	}
-	
+
 	set rpos(npos) {
 		this._pos = npos.mul(this.rscale);
 		this._rpos = npos;
@@ -310,7 +249,7 @@ class Player {
 				}
 			}
 			else {
-				item.sprite.alpha = 1;				
+				item.sprite.alpha = 1;
 			}
 		});
 		if(self.lastDamageTime < 1) self.lastDamageTime += dt;
@@ -469,9 +408,9 @@ class Chunk {
 	updateRender() {
 		var pos = camera.copy();
 		pos = new Vector2(pos.x + window.innerWidth / gScale / 2, pos.y + window.innerHeight / gScale / 2).div(CellSize);
-		var dist = Math.max(Math.min(Math.abs(this.physics.pos.x - pos.x), 
-								 Math.abs(this.physics.pos.x + chunkSize - pos.x)), 
-						Math.min(Math.abs(this.physics.pos.y - pos.y), 
+		var dist = Math.max(Math.min(Math.abs(this.physics.pos.x - pos.x),
+								 Math.abs(this.physics.pos.x + chunkSize - pos.x)),
+						Math.min(Math.abs(this.physics.pos.y - pos.y),
 								 Math.abs(this.physics.pos.y + chunkSize - pos.y)));
 		this.requested++;
 		if(dist <= renderDistance) {
@@ -757,7 +696,7 @@ function frame() {
 			$('#inventory').find('span').eq(3).text(Math.floor(pl.iron).toString());
 		}
 	}
-	if(selectBorder.screenPos){ 
+	if(selectBorder.screenPos){
 		selectBorder.updateScreenPos();
 	}
 	var prop = 25;

@@ -1,14 +1,14 @@
-var IP = window.location.hostname
-var mainSocket = undefined
-var roomSocket = undefined
-var token = undefined
+const IP = window.location.hostname
+var MainSocket = undefined
+var RoomSocket = undefined
+var Token = undefined
 var isInMain = true
 
 function setUIState(state, error) {
 	if(state == 'login') {
 		$('#rooms-form').hide()
 		$('#players-form').hide()
-		$('#game-form').hide()
+		$('#game').hide()
 		$('#login-form').show()
 		if(error) {
 			$('#login-error').html('<b>Error:</b> ' + error)
@@ -22,7 +22,7 @@ function setUIState(state, error) {
 		$('#rooms-list').empty()
 		$('#login-form').hide()
 		$('#players-form').hide()
-		$('#game-form').hide()
+		$('#game').hide()
 		$('#rooms-form').show()
 	}
 	else if(state == 'lobby') {
@@ -30,7 +30,7 @@ function setUIState(state, error) {
 		$('#players-list-virus').empty()
 		$('#login-form').hide()
 		$('#rooms-form').hide()
-		$('#game-form').hide()
+		$('#game').hide()
 		$('#players-form').show()
 		//$('#ready-button').removeClass('disabled')
 	}
@@ -38,29 +38,31 @@ function setUIState(state, error) {
 		$('#login-form').hide()
 		$('#rooms-form').hide()
 		$('#players-form').hide()
-		$('#game-form').show()
+		$('#game').show()
 	}
 }
 
 //Utility function
 function getCurrentSocket() {
-	return (isInMain ? mainSocket : roomSocket)
+	return (isInMain ? MainSocket : RoomSocket)
 }
 
 function setupRoomSocket(socket) {
 	//When disconnects, force to connect to main server and not reconnect to the room
 	socket.on('disconnect', () => {
 		isInMain = true
-		mainSocket.connect()
+		MainSocket.connect()
 	})
 
 	socket.on('connect', () => {
-		socket.emit('verifyToken', token)
+		socket.emit('verifyToken', Token)
 	})
 
 	socket.on('join-success', (roomId) => {
 		console.log('Successfully connected to ' + roomId)
 		setUIState('game')
+		IsGameActive = true
+		enableGame()
 	})
 }
 
@@ -71,18 +73,18 @@ function setupMainSocket(socket) {
 		console.log('reroute', port)
 		socket.disconnect()
 		isInMain = false
-		roomSocket = io.connect(IP + ':' + port, { reconnection: false })
-		setupRoomSocket(roomSocket)
+		RoomSocket = io.connect(IP + ':' + port, { reconnection: false })
+		setupRoomSocket(RoomSocket)
 	})
 
 	socket.on('connect', () => {
-		socket.emit('verifyToken', token)
+		socket.emit('verifyToken', Token)
 	})
 
 	socket.on('reg-success', (new_id, new_token, new_nickname) => {
 		console.log('reg-success', new_id, new_token, new_nickname)
-		token = new_token
-		Cookies.set('token', token)
+		Token = new_token
+		Cookies.set('Token', Token)
 		console.log('Successfully registered at main')
 	})
 
@@ -125,31 +127,40 @@ function setupMainSocket(socket) {
 }
 
 function setup() {
-	token = Cookies.get('token')
+	Token = Cookies.get('Token')
 	setUIState('login')
-	mainSocket = io.connect(IP + ':' + window.location.port)
-	setupMainSocket(mainSocket)
+	MainSocket = io.connect(IP + ':' + window.location.port)
+	setupMainSocket(MainSocket)
 }
 
 setup()
 
 function register() {
 	var nickname = $('#login-input').val()
-	mainSocket.emit('reg', nickname)
+	MainSocket.emit('reg', nickname)
 }
 
 function joinRoom(roomId) {
-	mainSocket.emit('joinRoom', token, roomId)
+	MainSocket.emit('joinRoom', Token, roomId)
 }
 
 function leaveRoom() {
-	mainSocket.emit('leaveRoom', token)
+	MainSocket.emit('leaveRoom', Token)
 }
 
 function userReady() {
-	mainSocket.emit('userReady', token)
+	MainSocket.emit('userReady', Token)
 }
 
 function changeSide(side) {
-	mainSocket.emit('changeSide', token, side)
+	MainSocket.emit('changeSide', Token, side)
+}
+
+//Starts the game
+function enableGame() {
+	if(IsGameActive && IsGameLoaded) {
+		IsGameStarted = true
+		ScreenStage.addChild(GameScene)
+		frame()
+	}
 }

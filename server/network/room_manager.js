@@ -6,7 +6,7 @@ const { basicPort, moduleName } = require('../settings.js')
 //Manages rooms livecycle and socket rerouting
 class RoomManager {
 	constructor() {
-		this.rooms = {}	
+		this.rooms = {}
 		this.length = 0
 		this.messageHandlers = {}
 		this.exitHandlers = {}
@@ -32,7 +32,7 @@ class RoomManager {
 	registerRoomMessageHandler(roomId, handler) {
 		//Optional, can be changed/removed
 		if(!this.rooms[roomId]) {
-			throw "RoomManager.registerRoomMessageHandler: No room with this id (" + roomId + ")" 
+			throw "RoomManager.registerRoomMessageHandler: No room with this id (" + roomId + ")"
 		}
 		this.messageHandlers[roomId] = handler
 	}
@@ -42,7 +42,7 @@ class RoomManager {
 	//function onExit(roomId)
 	registerRoomExitHandler(handler) {
 		if(!this.rooms[roomId]) {
-			throw "RoomManager.registerRoomExitHandler: No room with this id (" + roomId + ")" 
+			throw "RoomManager.registerRoomExitHandler: No room with this id (" + roomId + ")"
 		}
 		this.exitHandlers[roomId] = handler
 	}
@@ -63,9 +63,9 @@ class RoomManager {
 			this.length = Math.max(id, this.length)
 		}
 		else if(this.rooms[id]) {
-			throw "RoomManager.createRoom: There is already a room with this id (" + roomId + ")" 
+			throw "RoomManager.createRoom: There is already a room with this id (" + roomId + ")"
 		}
-		
+
 		//Forks an process and creates some handlers
 		var self = this
 		this.rooms[id] = child_process.fork(moduleName, ['' + id])
@@ -98,7 +98,7 @@ class RoomManager {
 		}
 		else {
 			if(!this.rooms[roomId]) {
-				throw "RoomManager.rerouteSocket: No room with this id (" + roomId + ")" 
+				throw "RoomManager.rerouteSocket: No room with this id (" + roomId + ")"
 			}
 			socket.emit('reroute', roomId + basicPort)
 		}
@@ -106,14 +106,14 @@ class RoomManager {
 
 	sendMessage(roomId, msg) {
 		if(!this.rooms[roomId]) {
-			throw "RoomManager.sendMessage: No room with this id (" + roomId + ")" 
+			throw "RoomManager.sendMessage: No room with this id (" + roomId + ")"
 		}
 		this.rooms[roomId].send(msg)
 	}
 
 	deleteRoom(roomId) {
 		if(!this.rooms[roomId]) {
-			throw "RoomManager.deleteRoom: No room with this id (" + roomId + ")" 
+			throw "RoomManager.deleteRoom: No room with this id (" + roomId + ")"
 		}
 
 		this.rooms[roomId].kill()

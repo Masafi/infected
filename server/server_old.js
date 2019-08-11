@@ -1330,7 +1330,7 @@ class GameMap {
 		var height = [];
 		var seed = Math.random() * 10;
 		var yOffset = 25;
-		var self = this;		
+		var self = this;
 		for(let i = 0; i < mapSize.x; i++) {
 			height.push(Math.floor(perlinNoise.noise(i / 10, seed, seed) * maxHeight + 1));
 		}

@@ -6,7 +6,7 @@ function enviromentSetup() {
 	//Streams for log output
 	global.logFile = fs.createWriteStream('./log.txt', { flags: 'a' })
 	global.logStdout = process.stdout
-	
+
 	//If error, log it to file
 	process.on('uncaughtException', (err) => {
 		log(err, 2)
