@@ -4,13 +4,13 @@ const BlockInfo = require('../block_info.js')
 const { BlockSize } = require('../consts.js')
 
 class Block extends Box {
-	constructor(rpos) {
+	constructor(rpos, id) {
 		super()
 		this.pos = rpos.mul(BlockSize)
 		this.rpos = rpos.copy()
 		this.dim = BlockSize.copy()
 
-		this.id = 0
+		this.id = id || 0
 		this.owner = -1
 		this.hp = 0
 		this.damage = 0 //makes new hp

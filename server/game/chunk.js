@@ -1,3 +1,4 @@
+const Vector = require('./vector.js')
 const Box = require('./box.js')
 const { Air } = require('./blocks.js')
 
@@ -5,6 +6,7 @@ const { BlockSize, ChunkSize, ChunkUnitSize } = require('./consts.js')
 
 class Chunk extends Box {
 	constructor(rpos) {
+		super()
 		this.chunk = []
 		this.pos = rpos.mul(ChunkUnitSize)
 		this.rpos = rpos.copy()

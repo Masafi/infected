@@ -48,6 +48,14 @@ class Vector {
 		return new Vector(Math.min(this.x, v.x), Math.min(this.y, v.y))
 	}
 
+	maxv() {
+		return Math.max(this.x, this.y)
+	}
+
+	minv() {
+		return Math.max(this.x, this.y)
+	}
+
 	round() {
 		return new Vector(Math.floor(this.x), Math.floor(this.y))
 	}

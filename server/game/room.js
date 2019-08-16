@@ -10,6 +10,7 @@ const enviromentSetup = require('../enviroment_setup.js')
 const UserManager = require('../network/user_manager.js')
 
 const { jwtSecretKey, basicPort } = require('../settings.js')
+const { MapSize } = require('./consts.js')
 
 enviromentSetup()
 
@@ -26,7 +27,6 @@ var userManager = new UserManager()
 //Game
 
 const GameMap = require('./game_map.js')
-var map = new GameMap()
 
 //GameEnd
 
@@ -42,10 +42,11 @@ io.on('connection', (socket) => {
 		}
 
 		socket.emit('join-success', ROOM_ID)
-	})
-
-	socket.on('getChunk', (i, j) => {
-		socket.emit('chunk', { chunk: map.getChunk(i, j).getData() })
+		for (let i = 0; i < MapSize.x; i++) {
+			for (let j = 0; j < MapSize.y; j++) {
+				socket.emit('chunk', { chunk: GameMap.getChunk(i, j).getData(), i, j })
+			}
+		}
 	})
 })
 
@@ -70,5 +71,5 @@ process.on('message', (message) => {
 });
 
 function setup() {
-	map.generateMap()
+	GameMap.generateMap()
 }

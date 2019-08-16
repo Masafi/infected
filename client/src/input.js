@@ -3,7 +3,7 @@ const Input = (() => {
 
 const KeysPressed = {}
 //Map of keys and their's keycodes
-const keycodes = [[87, 'w'], [65, 'a'], [83, 's'], [68, 'd'], [32, ' '], [49, '1'], [50, '2'], [51, '3'], [52, '4']]
+const Keycodes = [[87, 'w'], [65, 'a'], [83, 's'], [68, 'd'], [32, ' '], [49, '1'], [50, '2'], [51, '3'], [52, '4']]
 
 //Keyboard handler
 function keyboard(keyCode, ch, local) {
@@ -20,8 +20,8 @@ function keyboard(keyCode, ch, local) {
 		if (event.keyCode === key.code) {
 			if (key.isUp) {
 				if(key.press) key.press(ch);
-				if(!key.local && isGameActive) {
-					socket.emit("keyboard", ch, true, token);
+				if(!key.local && IsGameActive) {
+					//socket.emit("keyboard", ch, true, token);
 				}
 				KeysPressed[keyCode] = true;
 			}
@@ -35,8 +35,8 @@ function keyboard(keyCode, ch, local) {
 		if (event.keyCode === key.code) {
 			if (key.isDown) {
 				if(key.release) key.release(ch);
-				if(!key.local && isGameActive) {
-					socket.emit("keyboard", ch, false, token);
+				if(!key.local && IsGameActive) {
+					//socket.emit("keyboard", ch, false, token);
 				}
 				KeysPressed[keyCode] = false;
 			}
@@ -53,32 +53,33 @@ function keyboard(keyCode, ch, local) {
 
 //Mouse handler
 function onMouseDown(event, canvas) {
-	if(IsGameStarted) {
-		let pos = new Vector2();
+	if(IsGameActive) {
+		let pos = new Vector();
 		pos.x = event.pageX - canvas.offsetLeft;
 		pos.y = event.pageY - canvas.offsetTop;
-		socket.emit("mouse", pos.div(new Vector2(gScale, gScale)).add(camera), event.button, currentState, token);
+		//socket.emit("mouse", pos.div(new Vector(GlobalScale, GlobalScale)).add(camera), event.button, currentState, token);
 	}
 }
 
 //Mouse handler
 function onMouseMoved(event, canvas) {
-	if(IsGameStarted) {
-		let pos = new Vector2();
+	if(IsGameActive) {
+		let pos = new Vector();
 		pos.x = event.pageX - canvas.offsetLeft;
 		pos.y = event.pageY - canvas.offsetTop;
-		selectBorder.screenPos = pos;
+		//TODO:
+		//selectBorder.screenPos = pos;
 	}
 }
 
-const wKey = keyboard(keycodes[0][0], keycodes[0][1], false)
-const aKey = keyboard(keycodes[1][0], keycodes[1][1], false)
-const sKey = keyboard(keycodes[2][0], keycodes[2][1], false)
-const dKey = keyboard(keycodes[3][0], keycodes[3][1], false)
-const spaceKey = keyboard(keycodes[4][0], keycodes[4][1], false)
+const wKey = keyboard(Keycodes[0][0], Keycodes[0][1], false)
+const aKey = keyboard(Keycodes[1][0], Keycodes[1][1], false)
+const sKey = keyboard(Keycodes[2][0], Keycodes[2][1], false)
+const dKey = keyboard(Keycodes[3][0], Keycodes[3][1], false)
+const spaceKey = keyboard(Keycodes[4][0], Keycodes[4][1], false)
 const numberKeys = []
 for(let i = 0; i < 4; i++) {
-	numberKeys.push(keyboard(keycodes[5 + i][0], keycodes[5 + i][1], true))
+	numberKeys.push(keyboard(Keycodes[5 + i][0], Keycodes[5 + i][1], true))
 }
 
 return {

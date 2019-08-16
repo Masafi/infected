@@ -2,6 +2,9 @@ const sanitizeHtml = require('sanitize-html')
 const util = require('util')
 const path = require('path')
 
+// Log level (All/Prod)
+const AllLogs = true
+
 //Sanitizes string, removes all html tags, checks for emptiness
 function sanitizeString(str) {
 	var empty = true
@@ -25,6 +28,7 @@ function sanitizeString(str) {
 
 //My log function with date, line and output to file too
 function log(string, warn = 0) {
+	if (!AllLogs && warn < 0) return;
 	var orig = Error.prepareStackTrace
 	Error.prepareStackTrace = function(_, stack){ return stack; }
 	var err = new Error

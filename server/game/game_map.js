@@ -1,3 +1,4 @@
+const Vector = require('./vector.js')
 const Blocks = require('./blocks.js')
 const Chunk = require('./chunk.js')
 const PerlinNoise = require('./perlin_noise.js')
@@ -37,13 +38,9 @@ class GameMap {
 	}
 
 	set(i, j, id) {
-		this.setValue(i, j, new BlockInfo.get(id).BlockClass(new Vector(cx, cy)))
-	}
-
-	setValue(i, j, cls) {
 		let cx = Math.floor(i / ChunkSize.x)
 		let cy = Math.floor(j / ChunkSize.y)
-		this.map[cx][cy].chunk[i-cx*ChunkSize.x][j-cy*ChunkSize.y] = cls
+		this.map[cx][cy].chunk[i-cx*ChunkSize.x][j-cy*ChunkSize.y] = new (BlockInfo.get(id)).BlockClass(new Vector(cx, cy), id)
 	}
 
 	getChunk(i, j) {
@@ -90,7 +87,7 @@ class GameMap {
 				}
 			}
 			for(let j = MaxHeight + 2 + YOffset; j < MapBlockSize.y; j++) {
-				var curNoise = perlinNoise.noise(i / 10, j / 10, seed) * 100
+				var curNoise = PerlinNoise(i / 10, j / 10, seed) * 100
 				if(curNoise <= Math.max(60, 100 - j)) {
 					this.set(i, j, 3)
 				}
@@ -121,12 +118,12 @@ class GameMap {
 					this.get(i, j).id = 2
 				}
 			}
-		}*/
+		}
 		this.map.forEach(function(row, i, arr) {
 			row.forEach(function(item, j, rarr) {
 				item.update(0)
 			});
-		});
+		});*/
 	}
 
 	update(i, j, dt) {

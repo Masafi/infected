@@ -5,10 +5,9 @@ var Token = undefined
 var isInMain = true
 
 function setUIState(state, error) {
-	if(state == 'login') {
+	if (state == 'login') {
 		$('#rooms-form').hide()
 		$('#players-form').hide()
-		$('#game').hide()
 		$('#login-form').show()
 		if(error) {
 			$('#login-error').html('<b>Error:</b> ' + error)
@@ -18,27 +17,24 @@ function setUIState(state, error) {
 			$('#login-error').hide()
 		}
 	}
-	else if(state == 'lobby-select') {
+	else if (state == 'lobby-select') {
 		$('#rooms-list').empty()
 		$('#login-form').hide()
 		$('#players-form').hide()
-		$('#game').hide()
 		$('#rooms-form').show()
 	}
-	else if(state == 'lobby') {
+	else if (state == 'lobby') {
 		$('#players-list-humans').empty()
 		$('#players-list-virus').empty()
 		$('#login-form').hide()
 		$('#rooms-form').hide()
-		$('#game').hide()
 		$('#players-form').show()
 		//$('#ready-button').removeClass('disabled')
 	}
-	else if(state == 'game') {
+	else if (state == 'game') {
 		$('#login-form').hide()
 		$('#rooms-form').hide()
 		$('#players-form').hide()
-		$('#game').show()
 	}
 }
 
@@ -61,8 +57,12 @@ function setupRoomSocket(socket) {
 	socket.on('join-success', (roomId) => {
 		console.log('Successfully connected to ' + roomId)
 		setUIState('game')
-		IsGameActive = true
+		IsServerStarted = true
 		enableGame()
+	})
+
+	socket.on('chunk', (info) => {
+		GameMap.update(info)
 	})
 }
 
@@ -113,7 +113,7 @@ function setupMainSocket(socket) {
 			var element = $('#rooms-list-item > *').clone()
 			element.prepend('Room ' + (lobby.id + 1))
 			element.find('span').text((lobby.playersNumber).toString())
-			if(lobby.startedTime >= 0) {
+			if (lobby.startedTime >= 0) {
 				element.addClass('active')
 				element.find('span').removeClass('badge-primary')
 				element.find('span').addClass('badge-light text-primary')
@@ -158,9 +158,9 @@ function changeSide(side) {
 
 //Starts the game
 function enableGame() {
-	if(IsGameActive && IsGameLoaded) {
-		IsGameStarted = true
-		ScreenStage.addChild(GameScene)
+	if (IsServerStarted && IsPixiLoaded) {
+		IsGameActive = true
+		ScreenScene.addChild(GameScene)
 		frame()
 	}
 }
