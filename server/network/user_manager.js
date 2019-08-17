@@ -37,12 +37,12 @@ class UserManager {
 	registerUser(socket, name) {
 		var sanitName = sanitizeString(name)
 		var user = undefined
-		if(!sanitName) {
+		if (!sanitName) {
 			return user
 		}
 
 		user = this.getUserBySocket(socket)
-		if(user) {
+		if (user) {
 			return user
 		}
 
@@ -73,7 +73,7 @@ class UserManager {
 		var tokensToDelete = []
 		var now = Date.now()
 		Object.entries(this.users).forEach((pair) => {
-			if(now - pair[1].online >= leftTimeout) {
+			if (pair[1].online >= 0 && now - pair[1].online >= leftTimeout) {
 				tokensToDelete.push(pair[0])
 			}
 		})
@@ -81,6 +81,16 @@ class UserManager {
 			delete this.socketMap[this.users[token].socket.id]
 			delete this.users[token]
 		})
+	}
+
+	onlineUsers() {
+		let online = 0
+		Object.entries(this.users).forEach((pair) => {
+			if (pair[1].online == -1) {
+				online++
+			}
+		})
+		return online
 	}
 
 	rerouteSocketMain(socket) {

@@ -40,6 +40,7 @@ function setup() {
 	IsPixiLoaded = true
 
 	enableGame()
+	frame()
 }
 
 function frame() {

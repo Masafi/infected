@@ -9,24 +9,25 @@ const jwt = require('jsonwebtoken')
 const enviromentSetup = require('../enviroment_setup.js')
 const UserManager = require('../network/user_manager.js')
 
-const { jwtSecretKey, basicPort } = require('../settings.js')
+const { jwtSecretKey, basicPort, roomDeathPeriod } = require('../settings.js')
 const { MapSize } = require('./consts.js')
 
 enviromentSetup()
 
 //Setting up a http+socket server
-var ROOM_ID = process.argv[2]
-var port = basicPort + parseInt(ROOM_ID)
-server.listen(port)
+const ROOM_ID = process.argv[2]
+const PORT = basicPort + parseInt(ROOM_ID)
+server.listen(PORT)
 
 //Log room creation
 log("Room " + ROOM_ID + " created")
 
-var userManager = new UserManager()
+const userManager = new UserManager()
 
 //Game
 
 const GameMap = require('./game_map.js')
+const MapGenerator = new (require('./map_generator.js'))
 
 //GameEnd
 
@@ -36,7 +37,8 @@ io.on('connection', (socket) => {
 	socket.on('verifyToken', (token) => {
 		log("verifyToken")
 		var user = userManager.verifyToken(token)
-		if(!user) {
+		user.online = -1
+		if (!user) {
 			userManager.rerouteSocketMain(socket)
 			return
 		}
@@ -71,5 +73,13 @@ process.on('message', (message) => {
 });
 
 function setup() {
-	GameMap.generateMap()
+	MapGenerator.generate()
+
+	// kills server if no users connected
+	setInterval(() => {
+		if (Object.keys(io.sockets.sockets).length == 0) {
+			log("No users in room " + ROOM_ID + ", stopping room")
+			process.exit()
+		}
+	}, roomDeathPeriod)
 }

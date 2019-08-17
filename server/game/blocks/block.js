@@ -3,6 +3,12 @@ const BlockInfo = require('../block_info.js')
 
 const { BlockSize } = require('../consts.js')
 
+const MultiTextureIds = {
+	"2": [1, 0, 1, 0, 2, 1, 2, 1, 1, 0, 1, 0, 2, 1, 2, 1],
+	"3": [8, 7, 5, 6, 3, 8, 4, 5, 1, 0, 8, 7, 2, 1, 3, 8],
+	"4": [8, 7, 5, 6, 3, 13, 4, 11, 1, 0, 14, 12, 2, 9, 10, 15]
+}
+
 class Block extends Box {
 	constructor(rpos, id) {
 		super()
@@ -14,6 +20,7 @@ class Block extends Box {
 		this.owner = -1
 		this.hp = 0
 		this.damage = 0 //makes new hp
+		this.multiTextureId = 0
 	}
 
 	//When hp is less than 0, and block must break
@@ -47,7 +54,8 @@ class Block extends Box {
 		return {
 			id: this.id,
 			owner: this.owner,
-			hp: this.hp
+			hp: this.hp,
+			multiTextureId: this.multiTextureId
 		}
 	}
 
@@ -76,6 +84,23 @@ class Block extends Box {
 			if (cat == 3)
 				this.onBuild()
 		}
+	}
+
+	updateMultiTexture() {
+		let mlttxt = BlockInfo.get(this.id).multiTexture
+		if (mlttxt == 0 || mlttxt == 1) {
+			return
+		}
+		let type = 8
+		// let onlyMe = this.id == 12;
+		let check = (i, j) => {
+			return !(Block.GameMap.checkCoords(i, j) && BlockInfo.get(Block.GameMap.get(i, j).id).solid)
+		}
+		let x = this.rpos.x
+		let y = this.rpos.y
+		let neigh = check(x, y - 1) * 8 + check(x + 1, y) * 4 + check(x, y + 1) * 2 + check(x - 1, y)
+		type = MultiTextureIds[mlttxt][neigh]
+		this.multiTextureId = type;
 	}
 
 	//Main update

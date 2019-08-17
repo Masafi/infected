@@ -1,5 +1,21 @@
 const Block = require('./blocks/block.js')
 const Air = require('./blocks/air.js')
-const Solid = require('./blocks/solid.js')
+const BlockInfo = require('./block_info.js')
 
-module.exports = { Block, Air, Solid }
+const Blocks = {
+	Block,
+	Air
+};
+
+// adding block class (constructor) for every id
+(() => {
+	let classByName = {}
+	for (const [key, value] of Object.entries(Blocks)) {
+		classByName[key] = value
+	}
+	BlockInfo.info.forEach((block) => {
+		block.BlockClass = classByName[block.blockClassName]
+	})
+})()
+
+module.exports = Blocks

@@ -1,10 +1,7 @@
-const fs = require('fs');
+const blockInfoFile = '/assets/block_info.json'
 
-const blockInfoFile = './server/res/block_info.json'
-
-class BlockInfo {
-	constructor() {
-		let json = JSON.parse(fs.readFileSync(blockInfoFile, 'utf8'))
+class TBlockInfo {
+	constructor(json) {
 		this.info = json.Info
 		this.nameIdMap = {}
 		for (let i = 0; i < this.info.length; i++) {
@@ -36,4 +33,8 @@ class BlockInfo {
 	}
 }
 
-module.exports = new BlockInfo()
+var BlockInfo
+
+$.getJSON(blockInfoFile, (data) => {
+	BlockInfo = new TBlockInfo(data)
+})

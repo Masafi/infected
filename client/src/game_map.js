@@ -9,21 +9,26 @@ class Block {
 		this.sprite.updatePos()
 	}
 
-	update(data = undefined) {
-		this.updateId(data)
+	update(data, chunk) {
+		this.updateId(data, chunk)
 		this.updateSprite(data)
 	}
 
 	updateSprite(data) {
-		this.sprite.updateTexture('sprite_' + (this.id < 10 ? '0' : '') + (this.id == 0 || this.id >= 3 ? this.id : (this.id + '_00')) + '.png')
+		if (BlockInfo.get(this.id).multiTexture && data.multiTextureId != undefined) {
+			this.sprite.updateBlockMultiTexture(this.id, data.multiTextureId)
+		}
+		else {
+			this.sprite.updateBlockTexture(this.id)
+		}
 	}
 
-	updateId(data) {
-		if (this.id == 0 && data.id != 0) {
-			//this.sprite.stageToScene(this.scene)
-		}
+	updateId(data, chunk) {
 		if (data.id == 0) {
-			//this.sprite.stageToScene(this.scene, true)
+			this.sprite.stageToScene(chunk.chunkScene, true)
+		}
+		else if (this.id == 0) {
+			this.sprite.stageToScene(chunk.chunkScene)
 		}
 		this.id = data.id
 	}
@@ -38,7 +43,6 @@ class Chunk {
 			this.chunk.push([])
 			for (let j = 0; j < ChunkSize.y; j++) {
 				this.chunk[i].push(new Block(new Vector(i, j).mul(BlockSize).add(rpos.mul(ChunkUnitSize))));
-				this.chunk[i][j].sprite.stageToScene(this.chunkScene)
 			}
 		}
 	}
@@ -59,7 +63,7 @@ class Chunk {
 
 	update(data) {
 		this.apply((block, i, j) => {
-			block.update(data[i][j])
+			block.update(data[i][j], this)
 		})
 	}
 

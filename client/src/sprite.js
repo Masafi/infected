@@ -1,7 +1,7 @@
 class Sprite {
 	constructor(spriteName) {
 		this.pos = new Vector()
-		this.sprite = new PIXI.Sprite(PIXI.Texture.fromFrame(spriteName))
+		this.sprite = (spriteName ? new PIXI.Sprite(PIXI.Texture.fromFrame(spriteName)) : undefined)
 	}
 
 	updatePos() {
@@ -12,6 +12,14 @@ class Sprite {
 
 	updateTexture(name) {
 		this.sprite.texture = PIXI.Texture.fromFrame(name)
+	}
+
+	updateBlockTexture(id) {
+		this.updateTexture('sprite_' + NumberPrefix(id) + '.png')
+	}
+
+	updateBlockMultiTexture(id, tid) {
+		this.updateTexture('sprite_' + NumberPrefix(id) + '_' + NumberPrefix(tid) + '.png')
 	}
 
 	stageToScene(scene, unstage) {
@@ -27,18 +35,16 @@ class Sprite {
 	}
 }
 
-// TODO: animated sprite
+class AnimatedSprite extends Sprite {
+	constructor(animation) {
+		super()
+		this.sprite = new PIXI.extras.AnimatedSprite(animation.frames)
+		this.sprite.loop = animation.loop
+		this.sprite.animationSpeed = animation.time
+	}
 
-function loadAnimation() {
-	let getTextureName = function(pref, id) {
-		return pref + "_" + (id >= 10 ? '' : '0') + id + '.png';
-	};
-	PlayerAnimData.forEach(function(item, i, arr)	 {
-		PlayerAnimation.push([]);
-		PlayerAnimation[i].push([]);
-		for (let j = 0; j < item[1]; j++) {
-				PlayerAnimation[i][0].push(PIXI.Texture.fromFrame(getTextureName(item[0], j)));
-		}
-		PlayerAnimation[i].push(item[2]);
-	});
+	play(stop) {
+		if (!stop) this.sprite.play()
+		else this.sprite.stop()
+	}
 }

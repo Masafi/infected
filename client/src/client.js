@@ -161,6 +161,5 @@ function enableGame() {
 	if (IsServerStarted && IsPixiLoaded) {
 		IsGameActive = true
 		ScreenScene.addChild(GameScene)
-		frame()
 	}
 }

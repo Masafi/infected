@@ -4,13 +4,45 @@ const PlayerSprite = 'assets/player.json';
 const BackgroundImage = 'assets/background.png';
 
 // Player animation states
+// Easy to write
 const PlayerAnimData = [['player_run', 1, false],
 				['player_run', 4, true],
 				['player_jump_up', 2, false],
 				['player_jump_down', 2, false],
 				['player_hit', 3, false]]
 
+
+function NumberPrefix(value) {
+	return (value < 10 ? '0' : '') + value;
+}
+
+function createAnimation(loop = false, time = 0.2, frames = []) {
+	return { frames, time, loop }
+}
+
+// Player animation data
+// Easy to use
 const PlayerAnimation = []
+const BreakingAnimation = createAnimation();
+
+// load animation
+(() => {
+	let getTexture = function(pref, id) {
+		return PIXI.Texture.fromFrame(pref + "_" + NumberPrefix(id) + '.png')
+	}
+	PlayerAnimData.forEach(function(item, i, arr) {
+		PlayerAnimation.push(createAnimation(item[2]))
+		for (let j = 0; j < item[1]; j++) {
+			//PlayerAnimation[i].frames.push(getTexture(item[0], j))
+		}
+	})
+
+	for (let i = 0; i < 4; i++) {
+		//BreakingAnimation.push(getTexture("breaking", i))
+	}
+})()
+
+
 
 // Game consts
 const BlockSize = new Vector(16, 16)

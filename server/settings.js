@@ -17,6 +17,8 @@ const lobbySize = 8
 const roomsNumber = 8
 // Time between ready and game start, ms
 const readyTimeout = 1000*5*0
+// Period to check if there any users left
+const roomDeathPeriod = 1000*30
 // Time to kick disconnected user from server, ms
 const leftTimeout = 1000*60*30
 
@@ -28,5 +30,6 @@ module.exports = {
 	lobbySize,
 	roomsNumber,
 	readyTimeout,
+	roomDeathPeriod,
 	leftTimeout
 }
