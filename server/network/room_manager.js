@@ -31,7 +31,7 @@ class RoomManager {
 	//functiom onMessage(msg, roomId)
 	registerRoomMessageHandler(roomId, handler) {
 		//Optional, can be changed/removed
-		if(!this.rooms[roomId]) {
+		if (!this.rooms[roomId]) {
 			throw "RoomManager.registerRoomMessageHandler: No room with this id (" + roomId + ")"
 		}
 		this.messageHandlers[roomId] = handler
@@ -41,7 +41,7 @@ class RoomManager {
 	//Handler is
 	//function onExit(roomId)
 	registerRoomExitHandler(handler) {
-		if(!this.rooms[roomId]) {
+		if (!this.rooms[roomId]) {
 			throw "RoomManager.registerRoomExitHandler: No room with this id (" + roomId + ")"
 		}
 		this.exitHandlers[roomId] = handler
@@ -54,38 +54,37 @@ class RoomManager {
 		//Find first free id
 		//Not fast, altogether works not that bad
 		var id = roomId || 0
-		if(!roomId) {
+		if (!roomId) {
 			for(; id < this.length; id++) {
-				if(!this.rooms[id]) {
+				if (!this.rooms[id]) {
 					break
 				}
 			}
 			this.length = Math.max(id, this.length)
 		}
-		else if(this.rooms[id]) {
+		else if (this.rooms[id]) {
 			throw "RoomManager.createRoom: There is already a room with this id (" + roomId + ")"
 		}
 
 		//Forks an process and creates some handlers
-		var self = this
 		this.rooms[id] = child_process.fork(moduleName, ['' + id])
-		this.rooms[id].on('exit', function() {
-			if(self.exitHandlers[id]) {
-				self.exitHandlers[id](id)
+		this.rooms[id].on('exit', () => {
+			if (this.exitHandlers[id]) {
+				this.exitHandlers[id](id)
 			}
-			else if(self.exitHandlers[-1]) {
-				self.exitHandlers[-1](id)
+			else if (this.exitHandlers[-1]) {
+				this.exitHandlers[-1](id)
 			}
-			delete self.rooms[id]
-			delete self.messageHandlers[id]
-			delete self.exitHandlers[id]
+			delete this.rooms[id]
+			delete this.messageHandlers[id]
+			delete this.exitHandlers[id]
 		})
-		this.rooms[id].on('message', function(msg) {
-			if(self.messageHandlers[id]) {
-				self.messageHandlers[id](msg, id)
+		this.rooms[id].on('message', (msg) => {
+			if (this.messageHandlers[id]) {
+				this.messageHandlers[id](msg, id)
 			}
-			else if(self.messageHandlers[-1]) {
-				self.messageHandlers[-1](msg, id)
+			else if (this.messageHandlers[-1]) {
+				this.messageHandlers[-1](msg, id)
 			}
 		})
 
@@ -93,11 +92,11 @@ class RoomManager {
 	}
 
 	rerouteSocket(socket, roomId) {
-		if(roomId == -1) {
+		if (roomId == -1) {
 			socket.emit('reroute', 'main')
 		}
 		else {
-			if(!this.rooms[roomId]) {
+			if (!this.rooms[roomId]) {
 				throw "RoomManager.rerouteSocket: No room with this id (" + roomId + ")"
 			}
 			socket.emit('reroute', roomId + basicPort)
@@ -105,14 +104,14 @@ class RoomManager {
 	}
 
 	sendMessage(roomId, msg) {
-		if(!this.rooms[roomId]) {
+		if (!this.rooms[roomId]) {
 			throw "RoomManager.sendMessage: No room with this id (" + roomId + ")"
 		}
 		this.rooms[roomId].send(msg)
 	}
 
 	deleteRoom(roomId) {
-		if(!this.rooms[roomId]) {
+		if (!this.rooms[roomId]) {
 			throw "RoomManager.deleteRoom: No room with this id (" + roomId + ")"
 		}
 

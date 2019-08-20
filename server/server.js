@@ -112,6 +112,7 @@ function setup() {
 		}
 	})
 	log("Server started successfully")
+	log("localhost:8080")
 }
 
 setup()

@@ -31,8 +31,11 @@ const MapGenerator = new (require('./map_generator.js'))
 
 //GameEnd
 
+var sockk
+
 //Setting a socket behavior
 io.on('connection', (socket) => {
+	sockk = socket
 	//We assume, that client registered already, so we'll just wait until he sends his token
 	socket.on('verifyToken', (token) => {
 		log("verifyToken")
@@ -73,6 +76,15 @@ process.on('message', (message) => {
 });
 
 function setup() {
+	setInterval(() => {
+		MapGenerator.init()
+		MapGenerator.generate()
+		for (let i = 0; i < MapSize.x; i++) {
+			for (let j = 0; j < MapSize.y; j++) {
+				sockk.emit('chunk', { chunk: GameMap.getChunk(i, j).getData(), i, j })
+			}
+		}
+	}, 5000)
 	MapGenerator.generate()
 
 	// kills server if no users connected

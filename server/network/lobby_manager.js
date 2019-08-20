@@ -42,7 +42,6 @@ class LobbyManager {
 		log("Room " + roomId + " started")
 		var lobby = this.lobbies[roomId]
 		
-		var self = this
 		this.roomManager.createRoom(roomId)
 		var users = []
 		lobby.users.forEach((user) => {
@@ -52,7 +51,7 @@ class LobbyManager {
 
 		setTimeout(() => {
 			lobby.users.forEach((user) => {
-				self.roomManager.rerouteSocket(user.socket, roomId)
+				this.roomManager.rerouteSocket(user.socket, roomId)
 			})
 		}, 1000)
 
@@ -64,7 +63,7 @@ class LobbyManager {
 	}
 
 	handleRoomEvent(res, roomId) {
-		if(res) {
+		if (res) {
 			this.onRoomChanged(roomId)
 		}
 		return res
@@ -72,7 +71,7 @@ class LobbyManager {
 
 	resume(user) {
 		user.online = -1
-		if(user.roomId == -1) {
+		if (user.roomId == -1) {
 			user.socket.join('main')
 			this.emitTo(user.socket)
 		}
@@ -85,17 +84,17 @@ class LobbyManager {
 	disconnect(user) {
 		user.online = Date.now()
 
-		if(user.roomId != -1 && this.lobbies[user.roomId].startedTime == -1) {
+		if (user.roomId != -1 && this.lobbies[user.roomId].startedTime == -1) {
 			this.leaveRoom(user)
 		}
 		this.emitTo(user.socket)
 	}
 
 	joinRoom(user, roomId) {
-		if(user.roomId != -1)
+		if (user.roomId != -1)
 			return false
 
-		if(roomId < 0 || roomId >= roomsNumber)
+		if (roomId < 0 || roomId >= roomsNumber)
 			return false
 
 		return this.handleRoomEvent(
@@ -105,7 +104,7 @@ class LobbyManager {
 	}
 
 	leaveRoom(user) {
-		if(user.roomId == -1)
+		if (user.roomId == -1)
 			return false
 
 		var roomId = user.roomId
@@ -116,7 +115,7 @@ class LobbyManager {
 	}
 
 	userReady(user) {
-		if(user.roomId == -1)
+		if (user.roomId == -1)
 			return false
 
 		return this.handleRoomEvent(
@@ -126,7 +125,7 @@ class LobbyManager {
 	}
 
 	changeSide(user, side) {
-		if(user.roomId == -1)
+		if (user.roomId == -1)
 			return false
 
 		return this.handleRoomEvent(

@@ -10,10 +10,6 @@ class Lobby {
 		this.onStart = undefined
 	}
 
-	registerOnStart(onStart) {
-		this.onStart = onStart
-	}
-
 	countSides() {
 		var sideSize = [0, 0]
 		this.users.forEach((user) => {

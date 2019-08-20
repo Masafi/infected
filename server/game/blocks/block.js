@@ -17,7 +17,6 @@ class Block extends Box {
 		this.dim = BlockSize.copy()
 
 		this.id = id || 0
-		this.owner = -1
 		this.hp = 0
 		this.damage = 0 //makes new hp
 		this.multiTextureId = 0
@@ -53,7 +52,6 @@ class Block extends Box {
 	getData() {
 		return {
 			id: this.id,
-			owner: this.owner,
 			hp: this.hp,
 			multiTextureId: this.multiTextureId
 		}

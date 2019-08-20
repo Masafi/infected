@@ -65,7 +65,7 @@ function frame() {
 	
 	// here goes magic
 	// basically this const got from tests
-	GlobalScale = GlobalScaleFactor * Math.max(window.innerWidth / 1536, window.innerHeight / 734)
+	//GlobalScale = GlobalScaleFactor * Math.max(window.innerWidth / 1536, window.innerHeight / 734)
 	
 	// MapUnitSize.mula(GlobalScale) - actual size of map in pixels (i think)
 	// new Vector(window...) - resolution

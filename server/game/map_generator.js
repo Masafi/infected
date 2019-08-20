@@ -7,8 +7,16 @@ const GameMap = require('./game_map.js')
 const YOffset = 25
 const MaxHeight = 15
 
+function minmax(from, value, to) {
+	return Math.max(from, Math.min(to, value))
+}
+
 class MapGenerator {
 	constructor(seed) {
+		this.init(seed)
+	}
+
+	init(seed) {
 		this.seed = seed || Math.random() * 10
 		this.map = []
 		for (let i = 0; i < MapBlockSize.x; i++) {
@@ -21,6 +29,10 @@ class MapGenerator {
 
 	checkCoords(i, j) {
 		return i != undefined && j != undefined && i >= 0 && j >= 0 && i < MapBlockSize.x && j < MapBlockSize.y
+	}
+
+	updateSeed() {
+		this.seed = (1664525 * this.seed + 1013904223) % 1
 	}
 
 	set(i, j, cls, meta) {
@@ -36,38 +48,46 @@ class MapGenerator {
 	generateHeightMap() {
 		this.heightMap = []
 		for (let i = 0; i < MapBlockSize.x; i++) {
-			this.heightMap.push(Math.floor(PerlinNoise(i / 10, this.seed, this.seed) * MaxHeight + 1))
+			let a = PerlinNoise(i / 20 + this.seed * 1000000, this.seed, this.seed) * MaxHeight
+			let b = PerlinNoise(i / 10 + this.seed * 1000000, this.seed, this.seed) * MaxHeight / 2 - MaxHeight / 2
+			let c = PerlinNoise(i / 5 + this.seed * 1000000, this.seed, this.seed) * MaxHeight / 4 - MaxHeight / 4
+			this.heightMap.push(Math.floor(a+b+c) + 1)
 		}
 	}
 
 	generateDirtMap() {
+		this.updateSeed()
 		this.dirtMap = []
 		for (let i = 0; i < MapBlockSize.x; i++) {
-			this.dirtMap.push(Math.floor(PerlinNoise(i / 3, this.seed, this.seed) * 4) + 2)
+			this.dirtMap.push(Math.floor(PerlinNoise(i / 8 + this.seed * 1000000, this.seed, this.seed) * MaxHeight) + 10)
 		}
 	}
 
 	cave(i, j) {
-		return Math.max(0, Math.atan((j - 36) / 21) * 27 + 17)
+		// let center = Math.exp(-((i-MapBlockSize.x/2)*(i-MapBlockSize.x/2)/200))*60
+		// let correctedCenter = minmax(0, -0.01 * j + 1.3, 1) * center
+		let value = Math.atan((j - 36) / 21) * 27 + 17 /* + correctedCenter */
+		return minmax(0, value, 100)
 	}
 
 	setCave(i, j, cls, meta) {
-		let curNoise = PerlinNoise(i / 10, j / 10, this.seed) * 100
+		let curNoise = PerlinNoise(i / 10 + this.seed * 1000000, j / 10, this.seed) * 100
 		if (curNoise >= this.cave(i, j)) {
 			this.set(i, j, cls, meta)
 		}
 	}
 
 	generateTerrain() {
+		this.updateSeed()
 		for (let i = 0; i < MapBlockSize.x; i++) {
 			let j = this.heightMap[i] + YOffset
 
 			this.setCave(i, j, "Grass")
+			j++
 
-			for (let k = j + 1; k < j + this.dirtMap[i]; k++) {
-				this.setCave(i, k, "Dirt")
+			for (; j < YOffset + this.heightMap[i] + this.dirtMap[i]; j++) {
+				this.setCave(i, j, "Dirt")
 			}
-			j += this.dirtMap[i]
 
 			for (; j < MapBlockSize.y; j++) {
 				this.setCave(i, j, "Stone")
