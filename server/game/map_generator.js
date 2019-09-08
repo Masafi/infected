@@ -12,17 +12,22 @@ function minmax(from, value, to) {
 }
 
 class MapGenerator {
-	constructor(seed) {
-		this.init(seed)
-	}
-
-	init(seed) {
-		this.seed = seed || Math.random() * 10
+	constructor() {
+		this.seed = Math.random() * 10
 		this.map = []
 		for (let i = 0; i < MapBlockSize.x; i++) {
 			this.map.push([])
 			for (let j = 0; j < MapBlockSize.y; j++) {
 				this.map[i].push({ id: 0 })
+			}
+		}
+	}
+
+	init(seed) {
+		this.seed = seed || Math.random() * 10
+		for (let i = 0; i < MapBlockSize.x; i++) {
+			for (let j = 0; j < MapBlockSize.y; j++) {
+				this.set(i, j, "Air")
 			}
 		}
 	}
@@ -129,7 +134,8 @@ class MapGenerator {
 		}
 	}
 
-	generate() {
+	generate(seed) {
+		this.init(seed)
 		this.generateHeightMap()
 		this.generateDirtMap()
 		this.generateTerrain()

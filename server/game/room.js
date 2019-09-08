@@ -76,15 +76,6 @@ process.on('message', (message) => {
 });
 
 function setup() {
-	setInterval(() => {
-		MapGenerator.init()
-		MapGenerator.generate()
-		for (let i = 0; i < MapSize.x; i++) {
-			for (let j = 0; j < MapSize.y; j++) {
-				sockk.emit('chunk', { chunk: GameMap.getChunk(i, j).getData(), i, j })
-			}
-		}
-	}, 5000)
 	MapGenerator.generate()
 
 	// kills server if no users connected
