@@ -30,6 +30,7 @@ class GameMap {
 	set(i, j, obj) {
 		let cx = Math.floor(i / ChunkSize.x)
 		let cy = Math.floor(j / ChunkSize.y)
+		this.map[cx][cy].lastUpdated = Date.now()
 		this.map[cx][cy].chunk[i-cx*ChunkSize.x][j-cy*ChunkSize.y] = obj
 	}
 

@@ -1,8 +1,8 @@
 //Pixi initialization
 PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST
 PIXI.loader
-	.add(AtlasSprite)
-	.add(PlayerSprite)
+	.add(AtlasSpriteName)
+	.add(HumanSpriteName)
 	.add(BackgroundImage)
 	.load(setup)
 
@@ -15,6 +15,8 @@ const GameScene = new PIXI.Container()
 const ObjectsScene = new PIXI.Container()
 
 const Camera = new Vector()
+const ScreenSize = new Vector()
+var Player
 var GameMap
 var BackgroundSprite
 var GlobalScale = GlobalScaleFactor
@@ -32,40 +34,32 @@ function setup() {
 
 	BackgroundSprite = new PIXI.Sprite(Resources[BackgroundImage].texture)
 	ScreenScene.addChild(BackgroundSprite)
+	ScreenSize.copy(window.innerWidth / GlobalScale / 2, window.innerHeight / GlobalScale / 2)
 
 	GameScene.scale.set(GlobalScaleFactor, GlobalScaleFactor)
 	GameScene.addChild(GameMap.mapScene)
 	GameScene.addChild(ObjectsScene)
 
+	loadAnimations()
+	Player = new TPlayer()
 	IsPixiLoaded = true
 
 	enableGame()
 	frame()
 }
 
-function frame() {
-	requestAnimationFrame(frame)
+function preUpdate() {
+	Player.position.copy(new Vector(Player.data.pos.x, Player.data.pos.y).mul(BlockSize))
+	Camera.copy(Player.position.sub(ScreenSize).max(new Vector(0, 0)))
+}
 
-	GameMap.render()
-	if (Input.keys.wKey.isDown) {
-		Camera.y -= 10
-	}
-	if (Input.keys.aKey.isDown) {
-		Camera.x -= 10
-	}
-	if (Input.keys.sKey.isDown) {
-		Camera.y += 10
-	}
-	if (Input.keys.dKey.isDown) {
-		Camera.x += 10
-	}
-
+function scale() {
 	// old
 	// let bgscale = Math.max((.x * mapSize.x * gScale + (prop - 1) * window.innerWidth) / (bgSize.x * prop), (ChunkUnitSize.y * mapSize.y * gScale + (prop - 1) * window.innerHeight) / (bgSize.y * prop))
 	
 	// here goes magic
 	// basically this const got from tests
-	//GlobalScale = GlobalScaleFactor * Math.max(window.innerWidth / 1536, window.innerHeight / 734)
+	GlobalScale = GlobalScaleFactor * Math.max(window.innerWidth / 1536, window.innerHeight / 734)
 	
 	// MapUnitSize.mula(GlobalScale) - actual size of map in pixels (i think)
 	// new Vector(window...) - resolution
@@ -75,9 +69,22 @@ function frame() {
 	// .maxv - both sizes must be equally scaled
 	let bgScale = MapUnitSize.mula(GlobalScale).add(new Vector(window.innerWidth, window.innerHeight).mula(BGConst - 1)).div(BGSize.mula(BGConst)).maxv()
 	BackgroundSprite.scale.set(bgScale, bgScale)
+	ScreenSize.copy(window.innerWidth / GlobalScale / 2, window.innerHeight / GlobalScale / 2)
 	// parallax
 	BackgroundSprite.position.set(-Camera.x * GlobalScale / BGConst, -Camera.y * GlobalScale / BGConst)
 	GameScene.scale.set(GlobalScale, GlobalScale)
 	Renderer.resize(window.innerWidth, window.innerHeight/* - 1*/ /* fixed? */) // -1 because chrome sometimes lags
 	Renderer.render(ScreenScene)
+}
+
+function frame() {
+	requestAnimationFrame(frame)
+
+	if (Player.data) {
+		GameMap.render()
+		preUpdate()
+		Player.update()
+	}
+
+	scale();
 }

@@ -5,9 +5,9 @@ class Sprite {
 	}
 
 	updatePos() {
-		var screenPos = this.pos.sub(Camera)
-		this.sprite.position.x = Math.floor(screenPos.x)
-		this.sprite.position.y = Math.floor(screenPos.y)
+		let screenPos = this.pos.sub(Camera).round()
+		this.sprite.position.x = screenPos.x
+		this.sprite.position.y = screenPos.y
 	}
 
 	updateTexture(name) {
@@ -27,11 +27,8 @@ class Sprite {
 		else scene.removeChild(this.sprite)
 	}
 
-	updateAnimation(info, time = 0.2) {
-		this.sprite = new PIXI.extras.AnimatedSprite(info[0])
-		this.sprite.loop = info[1]
-		this.sprite.play()
-		this.sprite.animationSpeed = time
+	play(stop) {
+
 	}
 }
 
@@ -44,7 +41,12 @@ class AnimatedSprite extends Sprite {
 	}
 
 	play(stop) {
-		if (!stop) this.sprite.play()
-		else this.sprite.stop()
+		if (!stop) {
+			this.sprite.gotoAndPlay(0)
+			this.sprite.play()
+		}
+		else {
+			this.sprite.stop()
+		}
 	}
 }

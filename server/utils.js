@@ -8,6 +8,9 @@ const AllLogs = true
 //Sanitizes string, removes all html tags, checks for emptiness
 function sanitizeString(str) {
 	var empty = true
+	if (typeof(str) != "string") {
+		return ''
+	}
 	var sanitStr = sanitizeHtml(str, {allowedTags: [], allowedAttributes: []})
 	if(sanitStr.length >= 16) {
 		sanitStr = sanitStr.substr(0, 16)

@@ -9,7 +9,7 @@ const jwt = require('jsonwebtoken')
 const enviromentSetup = require('../enviroment_setup.js')
 const UserManager = require('../network/user_manager.js')
 
-const { jwtSecretKey, basicPort, roomDeathPeriod } = require('../settings.js')
+const { jwtSecretKey, basicPort, roomDeathPeriod, tickrate } = require('../settings.js')
 const { MapSize } = require('./consts.js')
 
 enviromentSetup()
@@ -28,17 +28,12 @@ const userManager = new UserManager()
 
 const GameMap = require('./game_map.js')
 const MapGenerator = new (require('./map_generator.js'))
-
-//GameEnd
-
-var sockk
+const Player = require('./player.js')
 
 //Setting a socket behavior
 io.on('connection', (socket) => {
-	sockk = socket
-	//We assume, that client registered already, so we'll just wait until he sends his token
 	socket.on('verifyToken', (token) => {
-		log("verifyToken")
+		log('verifyToken')
 		var user = userManager.verifyToken(token)
 		user.online = -1
 		if (!user) {
@@ -46,13 +41,24 @@ io.on('connection', (socket) => {
 			return
 		}
 
-		socket.emit('join-success', ROOM_ID)
-		for (let i = 0; i < MapSize.x; i++) {
-			for (let j = 0; j < MapSize.y; j++) {
-				socket.emit('chunk', { chunk: GameMap.getChunk(i, j).getData(), i, j })
-			}
-		}
+		user.socket = socket
+		socket.emit('join-success', ROOM_ID, user.side)
+		user.player = new Player(user)
+		user.player.updateChunks()
 	})
+
+	socket.on('keyboard', function (key, state, token) {
+		var user = userManager.verifyToken(token)
+		if(!user) {
+			return
+		}
+
+		if (typeof(key) != "string" || typeof(state) != "boolean" || key.length > 1) {
+			return
+		}
+
+		user.player.keys[key] = state
+	});
 })
 
 //Main server messaging
@@ -75,6 +81,17 @@ process.on('message', (message) => {
 	var handler = onServerMessage[message.type](message)
 });
 
+function tick() {
+	Object.entries(userManager.users).forEach((pair) => {
+		let user = pair[1]
+		if (user.player == undefined) {
+			return
+		}
+		
+		user.player.update()
+	})
+}
+
 function setup() {
 	MapGenerator.generate()
 
@@ -85,4 +102,8 @@ function setup() {
 			process.exit()
 		}
 	}, roomDeathPeriod)
+
+	setInterval(() => {
+		tick()
+	}, tickrate)
 }

@@ -17,10 +17,12 @@ const lobbySize = 8
 const roomsNumber = 8
 // Time between ready and game start, ms
 const readyTimeout = 1000*5*0
-// Period to check if there any users left
-const roomDeathPeriod = 1000*30
+// Period to check if there any users left, ms
+const roomDeathPeriod = 1000*60
 // Time to kick disconnected user from server, ms
 const leftTimeout = 1000*60*30
+// Time between ticks, ms
+const tickrate = 33
 
 module.exports = {
 	jwtSecretKey,
@@ -31,5 +33,6 @@ module.exports = {
 	roomsNumber,
 	readyTimeout,
 	roomDeathPeriod,
-	leftTimeout
+	leftTimeout,
+	tickrate,
 }

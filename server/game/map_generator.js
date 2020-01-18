@@ -13,7 +13,7 @@ function minmax(from, value, to) {
 
 class MapGenerator {
 	constructor() {
-		this.seed = Math.random() * 10
+		this.seed = Math.random()
 		this.map = []
 		for (let i = 0; i < MapBlockSize.x; i++) {
 			this.map.push([])
@@ -24,7 +24,7 @@ class MapGenerator {
 	}
 
 	init(seed) {
-		this.seed = seed || Math.random() * 10
+		this.seed = seed || Math.random()
 		for (let i = 0; i < MapBlockSize.x; i++) {
 			for (let j = 0; j < MapBlockSize.y; j++) {
 				this.set(i, j, "Air")

@@ -11,6 +11,7 @@ class Chunk extends Box {
 		this.pos = rpos.mul(ChunkUnitSize)
 		this.rpos = rpos.copy()
 		this.dim = BlockSize.mul(ChunkSize)
+		this.lastUpdated = 0
 
 		for (let i = 0; i < ChunkSize.x; i++) {
 			this.chunk.push([])

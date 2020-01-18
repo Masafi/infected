@@ -1,12 +1,11 @@
 // File names
-const AtlasSprite = 'assets/atlas.json';
-const PlayerSprite = 'assets/player.json';
+const AtlasSpriteName = 'assets/atlas.json';
+const HumanSpriteName = 'assets/player.json';
 const BackgroundImage = 'assets/background.png';
 
-// Player animation states
+// Human animation states
 // Easy to write
-const PlayerAnimData = [['player_run', 1, false],
-				['player_run', 4, true],
+const HumanAnimData = [['player_run', 4, true],
 				['player_jump_up', 2, false],
 				['player_jump_down', 2, false],
 				['player_hit', 3, false]]
@@ -16,33 +15,31 @@ function NumberPrefix(value) {
 	return (value < 10 ? '0' : '') + value;
 }
 
-function createAnimation(loop = false, time = 0.2, frames = []) {
-	return { frames, time, loop }
+function getTexture(pref, id) {
+	return PIXI.Texture.fromFrame(pref + "_" + NumberPrefix(id) + '.png')
 }
 
-// Player animation data
-// Easy to use
-const PlayerAnimation = []
-const BreakingAnimation = createAnimation();
-
-// load animation
-(() => {
-	let getTexture = function(pref, id) {
-		return PIXI.Texture.fromFrame(pref + "_" + NumberPrefix(id) + '.png')
+function createAnimation(name, size, loop = false, time = 0.2) {
+	let frames = []
+	for (let j = 0; j < size; j++) {
+		frames.push(getTexture(name, j))
 	}
-	PlayerAnimData.forEach(function(item, i, arr) {
-		PlayerAnimation.push(createAnimation(item[2]))
-		for (let j = 0; j < item[1]; j++) {
-			//PlayerAnimation[i].frames.push(getTexture(item[0], j))
-		}
+	return { animated: true, texture: {frames, time, loop} }
+}
+
+var BreakingAnimation;
+const HumanRenderStates = {
+	'': {animated: false, texture: undefined },
+	'player_stand': {animated: false, texture: "player_run_00.png" },
+}
+
+function loadAnimations() {
+	BreakingAnimation = createAnimation("breaking", 4)
+
+	HumanAnimData.forEach(function(item, i, arr) {
+		HumanRenderStates[item[0]] = createAnimation(item[0], item[1], item[2])
 	})
-
-	for (let i = 0; i < 4; i++) {
-		//BreakingAnimation.push(getTexture("breaking", i))
-	}
-})()
-
-
+}
 
 // Game consts
 const BlockSize = new Vector(16, 16)
@@ -54,3 +51,4 @@ const MapUnitSize = MapBlockSize.mul(BlockSize)
 const BGConst = 25 // scale const something background 
 const BGSize = new Vector(1152, 576) // image in pixels
 const GlobalScaleFactor = 1.7 // don't ask
+const RenderDistance = new Vector(5, 4) // in chunks

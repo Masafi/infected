@@ -22,29 +22,33 @@ class Block extends Box {
 		this.multiTextureId = 0
 	}
 
-	//When hp is less than 0, and block must break
+	// When hp is less than 0, and block must break
 	onBreak() {
-		//must be init from GameMap
-		//sets air on this block's position
+		// must be init from GameMap
+		// sets air on this block's position
 		this.GameMap.set(this.rpos.x, this.rpos.y, 0)
 	}
 
-	//When hp is less than it's construction point, and block must stop working (if it can)
+	// When hp is less than it's construction point, and block must stop working (if it can)
 	onDisassembly() {
 
 	}
 
-	//When hp is greater than it's construction point, and block must start working (if it can)
+	// When hp is greater than it's construction point, and block must start working (if it can)
 	onAssembly() {
 
 	}
 
-	//When hp is 100
+	// When hp is 100
 	onBuild() {
 
 	}
 
 	onUpdate(data) {
+
+	}
+
+	onCollision(data) {
 
 	}
 

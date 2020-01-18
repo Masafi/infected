@@ -56,6 +56,9 @@ class Chunk {
 	}
 
 	stageToScene(scene, unstage) {
+		if (this.isRendered == !unstage) {
+			return
+		}
 		this.isRendered = !unstage
 		if (!unstage) scene.addChild(this.chunkScene)
 		else scene.removeChild(this.chunkScene)

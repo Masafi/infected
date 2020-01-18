@@ -2,7 +2,7 @@ const IP = window.location.hostname
 var MainSocket = undefined
 var RoomSocket = undefined
 var Token = undefined
-var isInMain = true
+var IsInMain = true
 
 function setUIState(state, error) {
 	if (state == 'login') {
@@ -40,29 +40,39 @@ function setUIState(state, error) {
 
 //Utility function
 function getCurrentSocket() {
-	return (isInMain ? MainSocket : RoomSocket)
+	return (IsInMain ? MainSocket : RoomSocket)
 }
 
 function setupRoomSocket(socket) {
 	//When disconnects, force to connect to main server and not reconnect to the room
 	socket.on('disconnect', () => {
-		isInMain = true
+		IsInMain = true
 		MainSocket.connect()
 	})
 
 	socket.on('connect', () => {
-		socket.emit('verifyToken', Token)
+		setTimeout(() => {
+			socket.emit('verifyToken', Token)
+		}, 500)
 	})
 
-	socket.on('join-success', (roomId) => {
-		console.log('Successfully connected to ' + roomId)
+	socket.on('join-success', (roomId, side) => {
+		console.log('Successfully connected to ' + roomId + ', side is ' + side)
 		setUIState('game')
 		IsServerStarted = true
+		Player.side = side
 		enableGame()
 	})
 
 	socket.on('chunk', (info) => {
+		if (!IsGameActive) {
+			return
+		}
 		GameMap.update(info)
+	})
+
+	socket.on('update', (data) => {
+		Player.data = data
 	})
 }
 
@@ -72,7 +82,7 @@ function setupMainSocket(socket) {
 	socket.on('reroute', (port) => {
 		console.log('reroute', port)
 		socket.disconnect()
-		isInMain = false
+		IsInMain = false
 		RoomSocket = io.connect(IP + ':' + port, { reconnection: false })
 		setupRoomSocket(RoomSocket)
 	})

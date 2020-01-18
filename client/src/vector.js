@@ -64,18 +64,31 @@ class Vector {
 		return Math.sqrt(this.x * this.x + this.y * this.y)
 	}
 
+	absv() {
+		return new Vector(Math.abs(this.x), Math.abs(this.y))
+	}
+
 	abs2() {
 		return this.x * this.x + this.y * this.y
 	}
 
-	copy(v) {
+	copy(v, b) {
 		if (v == undefined) {
 			return new Vector(this.x, this.y)
 		}
-		else {
+		else if (b == undefined) {
 			this.x = v.x
 			this.y = v.y
 		}
+		else {
+			this.x = v
+			this.y = b
+		}
+	}
+
+	set(x, y) {
+		this.x = x
+		this.y = y
 	}
 
 	toArr() {

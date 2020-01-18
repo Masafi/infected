@@ -21,7 +21,7 @@ function keyboard(keyCode, ch, local) {
 			if (key.isUp) {
 				if(key.press) key.press(ch);
 				if(!key.local && IsGameActive) {
-					//socket.emit("keyboard", ch, true, token);
+					RoomSocket.emit("keyboard", ch, true, Token);
 				}
 				KeysPressed[keyCode] = true;
 			}
@@ -36,7 +36,7 @@ function keyboard(keyCode, ch, local) {
 			if (key.isDown) {
 				if(key.release) key.release(ch);
 				if(!key.local && IsGameActive) {
-					//socket.emit("keyboard", ch, false, token);
+					RoomSocket.emit("keyboard", ch, false, Token);
 				}
 				KeysPressed[keyCode] = false;
 			}
@@ -57,7 +57,7 @@ function onMouseDown(event, canvas) {
 		let pos = new Vector();
 		pos.x = event.pageX - canvas.offsetLeft;
 		pos.y = event.pageY - canvas.offsetTop;
-		//socket.emit("mouse", pos.div(new Vector(GlobalScale, GlobalScale)).add(camera), event.button, currentState, token);
+		//RoomSocket.emit("mouse", pos.div(new Vector(GlobalScale, GlobalScale)).add(camera), event.button, currentState, Token);
 	}
 }
 

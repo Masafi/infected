@@ -22,6 +22,9 @@ class UserManager {
 
 	verifyToken(token) {
 		var user = undefined
+		if (typeof(token) != "string") {
+			return user
+		}
 		try {
 			var decoded = jwt.verify(token, jwtSecretKey)
 			user = this.users[token]

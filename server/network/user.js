@@ -19,6 +19,9 @@ class User {
 		//Lobby
 		this.ready = false
 		this.side = 0
+
+		// Game
+		this.player = undefined
 	}
 }
 
